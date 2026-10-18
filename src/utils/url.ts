@@ -9,7 +9,7 @@
  * - Neutralizes dangerous schemes (javascript:, vbscript:, file:, data:).
  */
 
-export const DEFAULT_SEARCH_TEMPLATE = 'https://duckduckgo.com/?q=%s';
+export const DEFAULT_SEARCH_TEMPLATE = 'https://www.google.com/search?q=%s';
 
 export function normalizeUrl(
   input: string,

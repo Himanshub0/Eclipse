@@ -158,7 +158,7 @@ export function validateMoveTabDirection(value: unknown): 'left' | 'right' {
 
 const VALID_THEMES: ReadonlyArray<ThemeMode> = ['dark', 'light', 'system'];
 const VALID_ACCENTS: ReadonlyArray<AccentChoice> = ['arsenic-green', 'ash-grey', 'badge-green'];
-const VALID_SEARCH: ReadonlyArray<SearchProviderId> = ['duckduckgo', 'google', 'bing', 'custom'];
+const VALID_SEARCH: ReadonlyArray<SearchProviderId> = ['google'];
 const VALID_STARTUP: ReadonlyArray<StartupMode> = ['homepage', 'newtab'];
 
 export function validateSettingsPayload(value: unknown): Partial<EclipseSettings> {

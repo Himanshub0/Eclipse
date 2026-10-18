@@ -15,13 +15,13 @@ interface QuickSite {
 }
 
 const PINNED_SITES: QuickSite[] = [
-  { title: 'DuckDuckGo', url: 'https://duckduckgo.com', domain: 'duckduckgo.com', category: 'Search' },
+  { title: 'Google', url: 'https://www.google.com', domain: 'google.com', category: 'Search' },
   { title: 'GitHub', url: 'https://github.com', domain: 'github.com', category: 'Code' },
   { title: 'Wikipedia', url: 'https://wikipedia.org', domain: 'wikipedia.org', category: 'Knowledge' },
   { title: 'Hacker News', url: 'https://news.ycombinator.com', domain: 'news.ycombinator.com', category: 'Tech' },
 ];
 
-export const NewTabPage: React.FC<NewTabPageProps> = ({ onNavigate, searchProvider }) => {
+export const NewTabPage: React.FC<NewTabPageProps> = ({ onNavigate }) => {
   const [query, setQuery] = useState('');
   const [currentDate, setCurrentDate] = useState('');
   const [currentTime, setCurrentTime] = useState('');
@@ -60,14 +60,7 @@ export const NewTabPage: React.FC<NewTabPageProps> = ({ onNavigate, searchProvid
     }
   };
 
-  const providerName =
-    searchProvider === 'google'
-      ? 'Google'
-      : searchProvider === 'bing'
-      ? 'Bing'
-      : searchProvider === 'custom'
-      ? 'Custom Search'
-      : 'DuckDuckGo';
+  const providerName = 'Google';
 
   return (
     <div className="new-tab-container">

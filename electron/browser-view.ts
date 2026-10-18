@@ -18,7 +18,7 @@ interface TabEntry {
   lastActiveTime: number;
 }
 
-const DEFAULT_HOMEPAGE = 'https://duckduckgo.com';
+const DEFAULT_HOMEPAGE = 'https://www.google.com';
 const HELP_URL = 'https://github.com/Himanshub0/Eclipse#readme';
 
 export interface WindowDelegate {

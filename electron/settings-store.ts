@@ -12,23 +12,21 @@ export const STORE_DEFAULT_SETTINGS: EclipseSettings = {
   version: 1,
   theme: 'dark',
   accentColor: 'arsenic-green',
-  searchProvider: 'duckduckgo',
-  customSearchUrl: 'https://duckduckgo.com/?q=%s',
-  homepage: 'https://duckduckgo.com',
+  searchProvider: 'google',
+  customSearchUrl: 'https://www.google.com/search?q=%s',
+  homepage: 'https://www.google.com',
   startupMode: 'homepage',
   adBlockerEnabled: true,
   tabDiscardingEnabled: true,
 };
 
-export const STORE_SEARCH_TEMPLATES: Record<Exclude<SearchProviderId, 'custom'>, string> = {
-  duckduckgo: 'https://duckduckgo.com/?q=%s',
+export const STORE_SEARCH_TEMPLATES: Record<SearchProviderId, string> = {
   google: 'https://www.google.com/search?q=%s',
-  bing: 'https://www.bing.com/search?q=%s',
 };
 
 const VALID_THEMES: ReadonlyArray<ThemeMode> = ['dark', 'light', 'system'];
 const VALID_ACCENTS: ReadonlyArray<AccentChoice> = ['arsenic-green', 'ash-grey', 'badge-green'];
-const VALID_SEARCH: ReadonlyArray<SearchProviderId> = ['duckduckgo', 'google', 'bing', 'custom'];
+const VALID_SEARCH: ReadonlyArray<SearchProviderId> = ['google'];
 const VALID_STARTUP: ReadonlyArray<StartupMode> = ['homepage', 'newtab'];
 
 function validateSettings(value: unknown): Partial<EclipseSettings> {
@@ -99,9 +97,13 @@ export class SettingsStore {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object') {
           const validated = validateSettings(parsed);
+          if (validated.homepage === 'https://duckduckgo.com') {
+            validated.homepage = 'https://www.google.com';
+          }
           return {
             ...STORE_DEFAULT_SETTINGS,
             ...validated,
+            searchProvider: 'google',
             version: 1,
           };
         }
@@ -132,6 +134,7 @@ export class SettingsStore {
     this.currentSettings = {
       ...this.currentSettings,
       ...validated,
+      searchProvider: 'google',
       version: 1,
     };
     this.saveToDisk();
@@ -139,11 +142,6 @@ export class SettingsStore {
   }
 
   public getSearchTemplate(): string {
-    const provider = this.currentSettings.searchProvider;
-    if (provider === 'custom' && this.currentSettings.customSearchUrl) {
-      const custom = this.currentSettings.customSearchUrl;
-      return custom.includes('%s') ? custom : `${custom}%s`;
-    }
-    return STORE_SEARCH_TEMPLATES[provider as keyof typeof STORE_SEARCH_TEMPLATES] || STORE_SEARCH_TEMPLATES.duckduckgo;
+    return STORE_SEARCH_TEMPLATES.google;
   }
 }

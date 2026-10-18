@@ -23,25 +23,25 @@ test('URL Normalization test suite', async (t) => {
   await t.test('converts search terms with spaces to search engine query', () => {
     assert.equal(
       normalizeUrl('best programming languages'),
-      'https://duckduckgo.com/?q=best%20programming%20languages'
+      'https://www.google.com/search?q=best%20programming%20languages'
     );
   });
 
   await t.test('converts single non-domain words to search engine query', () => {
     assert.equal(
       normalizeUrl('electron'),
-      'https://duckduckgo.com/?q=electron'
+      'https://www.google.com/search?q=electron'
     );
   });
 
   await t.test('neutralizes dangerous schemes like javascript: and file:', () => {
     assert.equal(
       normalizeUrl('javascript:alert(1)'),
-      'https://duckduckgo.com/?q=javascript%3Aalert(1)'
+      'https://www.google.com/search?q=javascript%3Aalert(1)'
     );
     assert.equal(
       normalizeUrl('file:///C:/secret.txt'),
-      'https://duckduckgo.com/?q=file%3A%2F%2F%2FC%3A%2Fsecret.txt'
+      'https://www.google.com/search?q=file%3A%2F%2F%2FC%3A%2Fsecret.txt'
     );
   });
 

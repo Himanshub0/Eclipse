@@ -5,7 +5,6 @@ import type {
   DownloadItemInfo,
   ThemeMode,
   AccentChoice,
-  SearchProviderId,
 } from '../types/settings';
 import type { BookmarkItem, HistoryItem } from '../types/browser';
 import {
@@ -71,13 +70,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isClearing, setIsClearing] = useState(false);
   const [clearedNotice, setClearedNotice] = useState(false);
 
-  // Custom search & homepage local input
+  // Homepage local input
   const [homepageInput, setHomepageInput] = useState(settings.homepage);
-  const [customSearchInput, setCustomSearchInput] = useState(settings.customSearchUrl);
 
   useEffect(() => {
     setHomepageInput(settings.homepage);
-    setCustomSearchInput(settings.customSearchUrl);
   }, [settings]);
 
   useEffect(() => {
@@ -297,7 +294,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       className="settings-text-input"
                       value={homepageInput}
                       onChange={(e) => setHomepageInput(e.target.value)}
-                      placeholder="https://duckduckgo.com"
+                      placeholder="https://www.google.com"
                     />
                     <button
                       type="button"
@@ -342,52 +339,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="settings-card">
                   <h3 className="settings-card-title">Default Search Provider</h3>
                   <p className="settings-card-desc">
-                    Queries typed directly into the address bar are routed through this search engine.
+                    Google Search is the dedicated default search engine for Eclipse. Queries typed directly into the address bar or new tab page are routed through Google.
                   </p>
                   <div className="settings-radio-group">
-                    {(
-                      [
-                        { id: 'duckduckgo', name: 'DuckDuckGo (Default)' },
-                        { id: 'google', name: 'Google' },
-                        { id: 'bing', name: 'Microsoft Bing' },
-                        { id: 'custom', name: 'Custom Search Provider' },
-                      ] as { id: SearchProviderId; name: string }[]
-                    ).map((prov) => (
-                      <label key={prov.id} className="settings-radio-label">
-                        <input
-                          type="radio"
-                          name="searchProvider"
-                          checked={settings.searchProvider === prov.id}
-                          onChange={() => onUpdateSettings({ searchProvider: prov.id })}
-                        />
-                        <span>{prov.name}</span>
-                      </label>
-                    ))}
+                    <label className="settings-radio-label">
+                      <input
+                        type="radio"
+                        name="searchProvider"
+                        checked={true}
+                        readOnly
+                      />
+                      <span>Google Search (Default & Exclusive)</span>
+                    </label>
                   </div>
-
-                  {settings.searchProvider === 'custom' && (
-                    <div className="custom-search-box">
-                      <label className="settings-field-label">
-                        Custom Search URL Template (use <code>%s</code> for search query):
-                      </label>
-                      <div className="settings-input-row">
-                        <input
-                          type="text"
-                          className="settings-text-input"
-                          value={customSearchInput}
-                          placeholder="https://search.brave.com/search?q=%s"
-                          onChange={(e) => setCustomSearchInput(e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="settings-action-btn"
-                          onClick={() => onUpdateSettings({ customSearchUrl: customSearchInput.trim() })}
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             )}

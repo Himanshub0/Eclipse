@@ -11,7 +11,7 @@ import { DEFAULT_SETTINGS, type EclipseSettings } from './types/settings';
 import type { BookmarkItem, HistoryItem, FindInPageResult } from './types/browser';
 import './styles/toolbar.css';
 
-const FALLBACK_HOMEPAGE = 'https://duckduckgo.com';
+const FALLBACK_HOMEPAGE = 'https://www.google.com';
 const HELP_URL = 'https://github.com/Himanshub0/Eclipse#readme';
 
 export const App: React.FC = () => {

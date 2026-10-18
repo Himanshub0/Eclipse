@@ -22,9 +22,9 @@ test('SettingsStore test suite', async (t) => {
 
     assert.equal(settings.theme, 'dark');
     assert.equal(settings.accentColor, 'arsenic-green');
-    assert.equal(settings.searchProvider, 'duckduckgo');
+    assert.equal(settings.searchProvider, 'google');
     assert.equal(settings.startupMode, 'homepage');
-    assert.equal(settings.homepage, 'https://duckduckgo.com');
+    assert.equal(settings.homepage, 'https://www.google.com');
     assert.equal(settings.adBlockerEnabled, true);
     assert.equal(settings.tabDiscardingEnabled, true);
   });
@@ -67,29 +67,12 @@ test('SettingsStore test suite', async (t) => {
     assert.equal(loaded.searchProvider, 'google');
   });
 
-  await t.test('resolves built-in and custom search query templates', () => {
+  await t.test('resolves Google search query template exclusively', () => {
     const store = new SettingsStore(testFilePath);
 
-    // Google
+    // Always resolves to Google
+    assert.equal(store.getSearchTemplate(), 'https://www.google.com/search?q=%s');
     store.updateSettings({ searchProvider: 'google' });
     assert.equal(store.getSearchTemplate(), 'https://www.google.com/search?q=%s');
-
-    // DuckDuckGo
-    store.updateSettings({ searchProvider: 'duckduckgo' });
-    assert.equal(store.getSearchTemplate(), 'https://duckduckgo.com/?q=%s');
-
-    // Custom with %s
-    store.updateSettings({
-      searchProvider: 'custom',
-      customSearchUrl: 'https://search.brave.com/search?q=%s',
-    });
-    assert.equal(store.getSearchTemplate(), 'https://search.brave.com/search?q=%s');
-
-    // Custom without %s (should auto-append)
-    store.updateSettings({
-      searchProvider: 'custom',
-      customSearchUrl: 'https://kagi.com/search?q=',
-    });
-    assert.equal(store.getSearchTemplate(), 'https://kagi.com/search?q=%s');
   });
 });

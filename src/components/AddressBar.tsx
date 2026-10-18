@@ -16,7 +16,7 @@ interface AddressBarProps {
 }
 
 export const AddressBar = forwardRef<AddressBarRef, AddressBarProps>(
-  ({ currentUrl, isLoading, searchProvider, isBookmarked, onToggleBookmark, onNavigate }, ref) => {
+  ({ currentUrl, isLoading, isBookmarked, onToggleBookmark, onNavigate }, ref) => {
     const normalizedUrl = (!currentUrl || currentUrl === 'about:blank') ? '' : currentUrl;
     const [inputValue, setInputValue] = useState(normalizedUrl);
     const [isFocused, setIsFocused] = useState(false);
@@ -58,14 +58,7 @@ export const AddressBar = forwardRef<AddressBarRef, AddressBarProps>(
 
     const isSecure = Boolean(normalizedUrl && normalizedUrl.toLowerCase().startsWith('https://'));
 
-    const providerName =
-      searchProvider === 'google'
-        ? 'Google'
-        : searchProvider === 'bing'
-        ? 'Bing'
-        : searchProvider === 'custom'
-        ? 'Search'
-        : 'DuckDuckGo';
+    const providerName = 'Google';
 
     return (
       <form
