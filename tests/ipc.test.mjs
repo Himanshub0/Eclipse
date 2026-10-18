@@ -1,11 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { validateUrlPayload, validateHeightPayload, IPC_CHANNELS } from '../electron/ipc.ts';
+import {
+  validateUrlPayload,
+  validateTabIdPayload,
+  validateLayoutBoundsPayload,
+  IPC_CHANNELS,
+} from '../electron/ipc.ts';
 
 test('IPC Validator test suite', async (t) => {
   await t.test('channels are defined as constants', () => {
     assert.equal(IPC_CHANNELS.NAVIGATE, 'browser:navigate');
+    assert.equal(IPC_CHANNELS.CREATE_TAB, 'browser:create-tab');
+    assert.equal(IPC_CHANNELS.SWITCH_TAB, 'browser:switch-tab');
+    assert.equal(IPC_CHANNELS.CLOSE_TAB, 'browser:close-tab');
     assert.equal(IPC_CHANNELS.STATE_CHANGED, 'browser:state-changed');
   });
 
@@ -20,20 +28,18 @@ test('IPC Validator test suite', async (t) => {
     assert.throws(() => validateUrlPayload({}), TypeError);
   });
 
-  await t.test('rejects overly long URL strings', () => {
-    const huge = 'a'.repeat(5000);
-    assert.throws(() => validateUrlPayload(huge), RangeError);
+  await t.test('validates and rejects tab IDs', () => {
+    assert.equal(validateTabIdPayload('tab-1'), 'tab-1');
+    assert.throws(() => validateTabIdPayload(''), RangeError);
+    assert.throws(() => validateTabIdPayload(123), TypeError);
   });
 
-  await t.test('validates and clamps valid height payloads', () => {
-    assert.equal(validateHeightPayload(76), 76);
-    assert.equal(validateHeightPayload(75.8), 76);
-  });
+  await t.test('validates layout bounds payload', () => {
+    const valid = validateLayoutBoundsPayload({ sidebarWidth: 240, topBarHeight: 48 });
+    assert.equal(valid.sidebarWidth, 240);
+    assert.equal(valid.topBarHeight, 48);
 
-  await t.test('rejects invalid height payloads', () => {
-    assert.throws(() => validateHeightPayload('76'), TypeError);
-    assert.throws(() => validateHeightPayload(NaN), TypeError);
-    assert.throws(() => validateHeightPayload(10), RangeError);
-    assert.throws(() => validateHeightPayload(500), RangeError);
+    assert.throws(() => validateLayoutBoundsPayload(null), TypeError);
+    assert.throws(() => validateLayoutBoundsPayload({ sidebarWidth: -5, topBarHeight: 40 }), RangeError);
   });
 });

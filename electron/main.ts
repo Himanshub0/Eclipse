@@ -1,12 +1,15 @@
 import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import path from 'path';
 import { BrowserViewManager } from './browser-view';
-import { IPC_CHANNELS, validateUrlPayload, validateHeightPayload } from './ipc';
+import {
+  IPC_CHANNELS,
+  validateUrlPayload,
+  validateTabIdPayload,
+  validateLayoutBoundsPayload,
+} from './ipc';
 
 let mainWindow: BrowserWindow | null = null;
 let browserViewManager: BrowserViewManager | null = null;
-
-const INITIAL_HOMEPAGE = 'https://duckduckgo.com';
 
 function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -14,13 +17,13 @@ function createMainWindow(): BrowserWindow {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    title: 'Project Browser',
+    title: 'Eclipse',
     backgroundColor: '#18181b',
     titleBarStyle: 'hidden',
     titleBarOverlay: {
       color: '#18181b',
       symbolColor: '#f4f4f5',
-      height: 34,
+      height: 38,
     },
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -32,19 +35,16 @@ function createMainWindow(): BrowserWindow {
 
   win.removeMenu();
 
-  // Security: Prevent navigation of the main application chrome window to external websites
   win.webContents.on('will-navigate', (event, targetUrl) => {
     const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
     if (isDev && targetUrl.startsWith(process.env.VITE_DEV_SERVER_URL!)) {
       return;
     }
-    // In production, only allow loading local files
     if (!targetUrl.startsWith('file://')) {
       event.preventDefault();
     }
   });
 
-  // Security: Deny window.open requests from the UI window
   win.webContents.setWindowOpenHandler(() => {
     return { action: 'deny' };
   });
@@ -74,24 +74,35 @@ function registerIpcHandlers(): void {
     return browserViewManager.reload();
   });
 
-  ipcMain.handle(IPC_CHANNELS.GET_STATE, async () => {
-    if (!browserViewManager) {
-      return {
-        url: '',
-        title: '',
-        isLoading: false,
-        canGoBack: false,
-        canGoForward: false,
-        error: null,
-      };
-    }
-    return browserViewManager.getState();
+  ipcMain.handle(IPC_CHANNELS.CREATE_TAB, async (_event, rawUrl?: unknown) => {
+    if (!browserViewManager) return '';
+    const initialUrl = typeof rawUrl === 'string' ? validateUrlPayload(rawUrl) : undefined;
+    return browserViewManager.createTab(initialUrl);
   });
 
-  ipcMain.handle(IPC_CHANNELS.SET_TOOLBAR_HEIGHT, async (_event, rawHeight: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.CLOSE_TAB, async (_event, rawTabId: unknown) => {
     if (!browserViewManager) return;
-    const height = validateHeightPayload(rawHeight);
-    browserViewManager.setToolbarHeight(height);
+    const tabId = validateTabIdPayload(rawTabId);
+    browserViewManager.closeTab(tabId);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SWITCH_TAB, async (_event, rawTabId: unknown) => {
+    if (!browserViewManager) return;
+    const tabId = validateTabIdPayload(rawTabId);
+    browserViewManager.switchTab(tabId);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GET_STATE, async () => {
+    if (!browserViewManager) {
+      return { tabs: [], activeTabId: '' };
+    }
+    return browserViewManager.getAppState();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SET_LAYOUT_BOUNDS, async (_event, rawLayout: unknown) => {
+    if (!browserViewManager) return;
+    const { sidebarWidth, topBarHeight } = validateLayoutBoundsPayload(rawLayout);
+    browserViewManager.setLayoutBounds(sidebarWidth, topBarHeight);
   });
 }
 
@@ -100,7 +111,7 @@ async function initializeApp(): Promise<void> {
   registerIpcHandlers();
 
   mainWindow = createMainWindow();
-  browserViewManager = new BrowserViewManager(mainWindow, 76);
+  browserViewManager = new BrowserViewManager(mainWindow, 240, 48);
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
   if (devServerUrl) {
@@ -109,9 +120,6 @@ async function initializeApp(): Promise<void> {
     const indexPath = path.join(__dirname, '../dist/index.html');
     void mainWindow.loadFile(indexPath);
   }
-
-  // Initial navigation to homepage in browser view
-  void browserViewManager.navigate(INITIAL_HOMEPAGE);
 
   mainWindow.show();
   mainWindow.focus();
@@ -130,7 +138,6 @@ async function initializeApp(): Promise<void> {
   });
 }
 
-// App lifecycle
 app.whenReady().then(initializeApp).catch((err) => {
   const fs = require('fs');
   fs.writeFileSync('startup_error.log', `Fatal error during application startup: ${err?.stack || err}\n`);

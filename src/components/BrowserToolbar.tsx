@@ -4,7 +4,6 @@ import { AddressBar, AddressBarRef } from './AddressBar';
 
 interface BrowserToolbarProps {
   url: string;
-  title: string;
   isLoading: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
@@ -19,7 +18,6 @@ interface BrowserToolbarProps {
 
 export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
   url,
-  title,
   isLoading,
   canGoBack,
   canGoForward,
@@ -55,19 +53,8 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
   }, [onReportHeight]);
 
   return (
-    <div className="browser-toolbar" ref={toolbarRef}>
-      <div className="toolbar-top-tab">
-        <div className="tab-title-container">
-          <span className="tab-favicon">
-            {isLoading ? <SpinnerIcon size={12} /> : '🌐'}
-          </span>
-          <span className="tab-title" title={title || url || 'New Tab'}>
-            {title || url || 'New Tab'}
-          </span>
-        </div>
-      </div>
-
-      <div className="toolbar-controls-row">
+    <header className="eclipse-top-bar" ref={toolbarRef}>
+      <div className="top-bar-controls-row">
         <div className="navigation-group">
           <button
             type="button"
@@ -123,6 +110,6 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
       </div>
 
       {isLoading && <div className="toolbar-progress-bar" />}
-    </div>
+    </header>
   );
 };

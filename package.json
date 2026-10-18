@@ -1,8 +1,8 @@
 {
-  "name": "project-browser",
+  "name": "eclipse",
   "version": "0.1.0",
   "private": true,
-  "description": "Desktop web browser built with Electron, TypeScript, React, and Vite",
+  "description": "Eclipse — Fast, secure desktop web browser with vertical tab management",
   "main": "dist-electron/main.cjs",
   "type": "module",
   "scripts": {

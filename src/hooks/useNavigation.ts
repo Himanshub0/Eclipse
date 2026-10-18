@@ -1,31 +1,25 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { BrowserNavState } from '../types/browser';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import type { BrowserAppState, LayoutBoundsPayload, TabItem } from '../types/browser';
 
-const DEFAULT_STATE: BrowserNavState = {
-  url: '',
-  title: 'New Tab',
-  isLoading: false,
-  canGoBack: false,
-  canGoForward: false,
-  error: null,
+const DEFAULT_STATE: BrowserAppState = {
+  tabs: [],
+  activeTabId: '',
 };
 
 export function useNavigation() {
-  const [navState, setNavState] = useState<BrowserNavState>(DEFAULT_STATE);
+  const [appState, setAppState] = useState<BrowserAppState>(DEFAULT_STATE);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.browserApi) {
       return;
     }
 
-    // Fetch initial state
     void window.browserApi.getState().then((initial) => {
-      if (initial) setNavState(initial);
+      if (initial && initial.tabs) setAppState(initial);
     });
 
-    // Subscribe to ongoing state changes from main process
     const unsubscribe = window.browserApi.onStateChange((newState) => {
-      setNavState(newState);
+      setAppState(newState);
     });
 
     return () => {
@@ -33,46 +27,69 @@ export function useNavigation() {
     };
   }, []);
 
+  const activeTab: TabItem = useMemo(() => {
+    const found = appState.tabs.find((t) => t.id === appState.activeTabId);
+    return (
+      found || {
+        id: '',
+        url: '',
+        title: 'Eclipse',
+        isLoading: false,
+        canGoBack: false,
+        canGoForward: false,
+        error: null,
+      }
+    );
+  }, [appState]);
+
   const navigate = useCallback(async (url: string) => {
-    if (window.browserApi) {
-      return window.browserApi.navigate(url);
-    }
+    if (window.browserApi) return window.browserApi.navigate(url);
     return false;
   }, []);
 
   const goBack = useCallback(async () => {
-    if (window.browserApi) {
-      return window.browserApi.goBack();
-    }
+    if (window.browserApi) return window.browserApi.goBack();
     return false;
   }, []);
 
   const goForward = useCallback(async () => {
-    if (window.browserApi) {
-      return window.browserApi.goForward();
-    }
+    if (window.browserApi) return window.browserApi.goForward();
     return false;
   }, []);
 
   const reload = useCallback(async () => {
-    if (window.browserApi) {
-      return window.browserApi.reload();
-    }
+    if (window.browserApi) return window.browserApi.reload();
     return false;
   }, []);
 
-  const setToolbarHeight = useCallback(async (height: number) => {
-    if (window.browserApi) {
-      return window.browserApi.setToolbarHeight(height);
-    }
+  const createTab = useCallback(async (url?: string) => {
+    if (window.browserApi) return window.browserApi.createTab(url);
+    return '';
+  }, []);
+
+  const closeTab = useCallback(async (tabId: string) => {
+    if (window.browserApi) return window.browserApi.closeTab(tabId);
+  }, []);
+
+  const switchTab = useCallback(async (tabId: string) => {
+    if (window.browserApi) return window.browserApi.switchTab(tabId);
+  }, []);
+
+  const setLayoutBounds = useCallback(async (layout: LayoutBoundsPayload) => {
+    if (window.browserApi) return window.browserApi.setLayoutBounds(layout);
   }, []);
 
   return {
-    ...navState,
+    tabs: appState.tabs,
+    activeTabId: appState.activeTabId,
+    activeTab,
     navigate,
     goBack,
     goForward,
     reload,
-    setToolbarHeight,
+    createTab,
+    closeTab,
+    switchTab,
+    setLayoutBounds,
   };
 }

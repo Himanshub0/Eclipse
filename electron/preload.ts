@@ -1,15 +1,7 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
-import type { BrowserApi, BrowserNavState } from '../src/types/browser';
+import type { BrowserApi, BrowserAppState, LayoutBoundsPayload } from '../src/types/browser';
 import { IPC_CHANNELS } from './ipc';
 
-/**
- * Preload script exposing a strictly scoped, type-safe API to the React UI.
- *
- * Security guarantees:
- * - contextIsolation: true, sandbox: true.
- * - ipcRenderer is NEVER exposed directly to window or DOM.
- * - Only explicit, whitelisted methods with defined signatures are exposed.
- */
 const browserApi: BrowserApi = {
   navigate: (url: string): Promise<boolean> => {
     return ipcRenderer.invoke(IPC_CHANNELS.NAVIGATE, url);
@@ -23,11 +15,20 @@ const browserApi: BrowserApi = {
   reload: (): Promise<boolean> => {
     return ipcRenderer.invoke(IPC_CHANNELS.RELOAD);
   },
-  getState: (): Promise<BrowserNavState> => {
+  createTab: (url?: string): Promise<string> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CREATE_TAB, url);
+  },
+  closeTab: (tabId: string): Promise<void> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CLOSE_TAB, tabId);
+  },
+  switchTab: (tabId: string): Promise<void> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SWITCH_TAB, tabId);
+  },
+  getState: (): Promise<BrowserAppState> => {
     return ipcRenderer.invoke(IPC_CHANNELS.GET_STATE);
   },
-  onStateChange: (callback: (state: BrowserNavState) => void): (() => void) => {
-    const subscription = (_event: IpcRendererEvent, state: BrowserNavState) => {
+  onStateChange: (callback: (state: BrowserAppState) => void): (() => void) => {
+    const subscription = (_event: IpcRendererEvent, state: BrowserAppState) => {
       callback(state);
     };
     ipcRenderer.on(IPC_CHANNELS.STATE_CHANGED, subscription);
@@ -35,8 +36,8 @@ const browserApi: BrowserApi = {
       ipcRenderer.removeListener(IPC_CHANNELS.STATE_CHANGED, subscription);
     };
   },
-  setToolbarHeight: (height: number): Promise<void> => {
-    return ipcRenderer.invoke(IPC_CHANNELS.SET_TOOLBAR_HEIGHT, height);
+  setLayoutBounds: (layout: LayoutBoundsPayload): Promise<void> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.SET_LAYOUT_BOUNDS, layout);
   },
 };
 
