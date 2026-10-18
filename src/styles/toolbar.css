@@ -56,9 +56,10 @@ html, body, #root {
 .toolbar-top-tab {
   display: flex;
   align-items: center;
-  padding: 4px 12px 0 12px;
+  padding: 4px 140px 0 12px;
   background-color: var(--bg-app);
-  height: 32px;
+  height: 34px;
+  -webkit-app-region: drag;
 }
 
 .tab-title-container {
@@ -66,7 +67,7 @@ html, body, #root {
   align-items: center;
   gap: 8px;
   max-width: 240px;
-  height: 28px;
+  height: 30px;
   padding: 0 12px;
   background-color: var(--bg-toolbar);
   border-top-left-radius: 6px;
@@ -76,6 +77,7 @@ html, body, #root {
   font-size: 12px;
   color: var(--text-main);
   overflow: hidden;
+  -webkit-app-region: no-drag;
 }
 
 .tab-favicon {
@@ -98,6 +100,7 @@ html, body, #root {
   gap: 8px;
   padding: 6px 12px;
   height: 44px;
+  -webkit-app-region: no-drag;
 }
 
 /* Navigation Buttons Group */

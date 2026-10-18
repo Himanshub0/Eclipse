@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import path from 'path';
 import { BrowserViewManager } from './browser-view';
 import { IPC_CHANNELS, validateUrlPayload, validateHeightPayload } from './ipc';
@@ -16,6 +16,12 @@ function createMainWindow(): BrowserWindow {
     minHeight: 600,
     title: 'Project Browser',
     backgroundColor: '#18181b',
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#18181b',
+      symbolColor: '#f4f4f5',
+      height: 34,
+    },
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
@@ -23,6 +29,8 @@ function createMainWindow(): BrowserWindow {
       sandbox: true,
     },
   });
+
+  win.removeMenu();
 
   // Security: Prevent navigation of the main application chrome window to external websites
   win.webContents.on('will-navigate', (event, targetUrl) => {
@@ -88,6 +96,7 @@ function registerIpcHandlers(): void {
 }
 
 async function initializeApp(): Promise<void> {
+  Menu.setApplicationMenu(null);
   registerIpcHandlers();
 
   mainWindow = createMainWindow();
