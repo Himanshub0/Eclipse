@@ -1,12 +1,14 @@
 import React, { useRef, useEffect } from 'react';
 import { BackIcon, ForwardIcon, ReloadIcon, StopIcon, HomeIcon } from './Icons';
 import { AddressBar, AddressBarRef } from './AddressBar';
+import type { SearchProviderId } from '../types/settings';
 
 interface BrowserToolbarProps {
   url: string;
   isLoading: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
+  searchProvider?: SearchProviderId;
   onNavigate: (url: string) => void;
   onGoBack: () => void;
   onGoForward: () => void;
@@ -22,6 +24,7 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
   isLoading,
   canGoBack,
   canGoForward,
+  searchProvider,
   onNavigate,
   onGoBack,
   onGoForward,
@@ -106,6 +109,7 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
             ref={addressBarRef}
             currentUrl={url}
             isLoading={isLoading}
+            searchProvider={searchProvider}
             onNavigate={onNavigate}
           />
         </div>

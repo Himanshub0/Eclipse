@@ -48,5 +48,7 @@ test('URL Normalization test suite', async (t) => {
   await t.test('handles empty and whitespace input', () => {
     assert.equal(normalizeUrl(''), 'about:blank');
     assert.equal(normalizeUrl('   '), 'about:blank');
+    assert.equal(normalizeUrl('about:blank'), 'about:blank');
+    assert.equal(normalizeUrl('ABOUT:BLANK'), 'about:blank');
   });
 });

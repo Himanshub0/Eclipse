@@ -60,8 +60,11 @@ export class BrowserViewManager {
     const active = this.tabs.get(this.activeTabId);
     if (!active) return;
 
-    if (this.isSettingsOpen) {
-      // Hide external website while settings overlay is active
+    const currentUrl = active.view.webContents.getURL() || '';
+    const isBlank = !currentUrl || currentUrl === 'about:blank';
+
+    if (this.isSettingsOpen || isBlank) {
+      // Hide external website while settings overlay or new-tab page is active
       active.view.setVisible(false);
       return;
     }
@@ -86,7 +89,7 @@ export class BrowserViewManager {
     this.updateBounds();
   }
 
-  public createTab(initialUrl = DEFAULT_HOMEPAGE): string {
+  public createTab(initialUrl = 'about:blank'): string {
     const tabId = `tab-${this.nextTabNumber++}`;
     const view = new WebContentsView({
       webPreferences: {
@@ -109,7 +112,7 @@ export class BrowserViewManager {
     this.setupSecurityPolicies(entry);
     this.setupNavigationLifecycle(entry);
 
-    if (initialUrl) {
+    if (initialUrl && initialUrl !== 'about:blank') {
       void this.navigateTab(entry, initialUrl);
     }
 
@@ -123,9 +126,7 @@ export class BrowserViewManager {
     this.activeTabId = tabId;
 
     for (const [id, entry] of this.tabs) {
-      if (id === tabId && !this.isSettingsOpen) {
-        entry.view.setVisible(true);
-      } else {
+      if (id !== tabId) {
         entry.view.setVisible(false);
       }
     }

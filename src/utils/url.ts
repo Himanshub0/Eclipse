@@ -16,7 +16,7 @@ export function normalizeUrl(
   searchTemplate = DEFAULT_SEARCH_TEMPLATE
 ): string {
   const trimmed = input.trim();
-  if (!trimmed) {
+  if (!trimmed || trimmed.toLowerCase() === 'about:blank') {
     return 'about:blank';
   }
 

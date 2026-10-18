@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
-import { LockIcon, GoIcon, SpinnerIcon } from './Icons';
+import { LockIcon, GoIcon, SpinnerIcon, CloseIcon } from './Icons';
+import type { SearchProviderId } from '../types/settings';
 
 export interface AddressBarRef {
   focusAndSelect: () => void;
@@ -8,21 +9,23 @@ export interface AddressBarRef {
 interface AddressBarProps {
   currentUrl: string;
   isLoading: boolean;
+  searchProvider?: SearchProviderId;
   onNavigate: (url: string) => void;
 }
 
 export const AddressBar = forwardRef<AddressBarRef, AddressBarProps>(
-  ({ currentUrl, isLoading, onNavigate }, ref) => {
-    const [inputValue, setInputValue] = useState(currentUrl);
+  ({ currentUrl, isLoading, searchProvider, onNavigate }, ref) => {
+    const normalizedUrl = (!currentUrl || currentUrl === 'about:blank') ? '' : currentUrl;
+    const [inputValue, setInputValue] = useState(normalizedUrl);
     const [isFocused, setIsFocused] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Sync input with external URL changes whenever not actively focused by user
     useEffect(() => {
       if (!isFocused) {
-        setInputValue(currentUrl);
+        setInputValue(normalizedUrl);
       }
-    }, [currentUrl, isFocused]);
+    }, [normalizedUrl, isFocused]);
 
     useImperativeHandle(ref, () => ({
       focusAndSelect: () => {
@@ -46,12 +49,21 @@ export const AddressBar = forwardRef<AddressBarRef, AddressBarProps>(
       if (e.key === 'Enter') {
         handleSubmit();
       } else if (e.key === 'Escape') {
-        setInputValue(currentUrl);
+        setInputValue(normalizedUrl);
         inputRef.current?.blur();
       }
     };
 
-    const isSecure = currentUrl.toLowerCase().startsWith('https://');
+    const isSecure = Boolean(normalizedUrl && normalizedUrl.toLowerCase().startsWith('https://'));
+
+    const providerName =
+      searchProvider === 'google'
+        ? 'Google'
+        : searchProvider === 'bing'
+        ? 'Bing'
+        : searchProvider === 'custom'
+        ? 'Search'
+        : 'DuckDuckGo';
 
     return (
       <form
@@ -73,26 +85,40 @@ export const AddressBar = forwardRef<AddressBarRef, AddressBarProps>(
           type="text"
           className="address-bar-input"
           value={inputValue}
-          placeholder="Search or enter web address"
+          placeholder={`Search with ${providerName} or enter address`}
           spellCheck={false}
           autoComplete="off"
           onChange={(e) => setInputValue(e.target.value)}
           onFocus={() => {
             setIsFocused(true);
-            // Select all on focus
             setTimeout(() => inputRef.current?.select(), 0);
           }}
           onBlur={() => {
             setIsFocused(false);
-            setInputValue(currentUrl);
+            setInputValue(normalizedUrl);
           }}
           onKeyDown={handleKeyDown}
         />
 
+        {isFocused && inputValue && (
+          <button
+            type="button"
+            className="address-bar-clear-btn"
+            title="Clear input (Esc)"
+            onClick={(e) => {
+              e.stopPropagation();
+              setInputValue('');
+              inputRef.current?.focus();
+            }}
+          >
+            <CloseIcon size={12} />
+          </button>
+        )}
+
         <button
           type="submit"
           className="address-bar-go-btn"
-          title="Go to URL"
+          title="Go to URL (Enter)"
           disabled={!inputValue.trim()}
         >
           <GoIcon size={16} />

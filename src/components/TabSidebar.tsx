@@ -1,10 +1,20 @@
 import React, { useRef, useEffect } from 'react';
 import type { TabItem } from '../types/browser';
-import { EclipseLogo, PlusIcon, CloseIcon, SpinnerIcon, SettingsIcon } from './Icons';
+import {
+  EclipseLogo,
+  PlusIcon,
+  CloseIcon,
+  SpinnerIcon,
+  SettingsIcon,
+  GlobeIcon,
+  SidebarToggleIcon,
+} from './Icons';
 
 interface TabSidebarProps {
   tabs: TabItem[];
   activeTabId: string;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
   onSelectTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
   onCreateTab: () => void;
@@ -15,6 +25,8 @@ interface TabSidebarProps {
 export const TabSidebar: React.FC<TabSidebarProps> = ({
   tabs,
   activeTabId,
+  isCollapsed = false,
+  onToggleCollapse,
   onSelectTab,
   onCloseTab,
   onCreateTab,
@@ -45,13 +57,23 @@ export const TabSidebar: React.FC<TabSidebarProps> = ({
   }, [onReportWidth]);
 
   return (
-    <aside className="eclipse-tab-sidebar" ref={sidebarRef}>
+    <aside className={`eclipse-tab-sidebar ${isCollapsed ? 'collapsed' : ''}`} ref={sidebarRef}>
       {/* Brand Header */}
       <div className="sidebar-brand-header">
-        <div className="brand-logo-container">
+        <div className="brand-logo-container" title="Eclipse Browser">
           <EclipseLogo size={20} className="brand-icon" />
-          <span className="brand-title">Eclipse</span>
+          {!isCollapsed && <span className="brand-title">Eclipse</span>}
         </div>
+        {onToggleCollapse && (
+          <button
+            type="button"
+            className="sidebar-toggle-btn"
+            onClick={onToggleCollapse}
+            title={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+          >
+            <SidebarToggleIcon size={16} />
+          </button>
+        )}
       </div>
 
       {/* New Tab Button */}
@@ -63,7 +85,7 @@ export const TabSidebar: React.FC<TabSidebarProps> = ({
           title="Open new tab (Ctrl+T)"
         >
           <PlusIcon size={16} />
-          <span>New Tab</span>
+          {!isCollapsed && <span>New Tab</span>}
         </button>
       </div>
 
@@ -71,6 +93,7 @@ export const TabSidebar: React.FC<TabSidebarProps> = ({
       <div className="sidebar-tabs-list" role="tablist" aria-label="Open tabs">
         {tabs.map((tab) => {
           const isActive = tab.id === activeTabId;
+          const displayTitle = tab.title || (tab.url && tab.url !== 'about:blank' ? tab.url : 'New Tab');
           return (
             <div
               key={tab.id}
@@ -78,31 +101,35 @@ export const TabSidebar: React.FC<TabSidebarProps> = ({
               aria-selected={isActive}
               className={`sidebar-tab-item ${isActive ? 'active' : ''}`}
               onClick={() => onSelectTab(tab.id)}
-              title={tab.title || tab.url || 'New Tab'}
+              title={displayTitle}
             >
               <div className="tab-status-icon">
                 {tab.isLoading ? (
                   <SpinnerIcon size={14} className="loading-spinner" />
                 ) : (
-                  <span className="tab-favicon-emoji">🌐</span>
+                  <GlobeIcon size={14} className="tab-globe-icon" />
                 )}
               </div>
 
-              <div className="tab-label-text">
-                {tab.title || tab.url || 'New Tab'}
-              </div>
+              {!isCollapsed && (
+                <>
+                  <div className="tab-label-text">
+                    {displayTitle}
+                  </div>
 
-              <button
-                type="button"
-                className="tab-close-btn"
-                title="Close tab (Ctrl+W)"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCloseTab(tab.id);
-                }}
-              >
-                <CloseIcon size={12} />
-              </button>
+                  <button
+                    type="button"
+                    className="tab-close-btn"
+                    title="Close tab (Ctrl+W)"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCloseTab(tab.id);
+                    }}
+                  >
+                    <CloseIcon size={12} />
+                  </button>
+                </>
+              )}
             </div>
           );
         })}
@@ -117,7 +144,7 @@ export const TabSidebar: React.FC<TabSidebarProps> = ({
           title="Settings (Ctrl+,)"
         >
           <SettingsIcon size={16} />
-          <span>Settings</span>
+          {!isCollapsed && <span>Settings</span>}
         </button>
       </div>
     </aside>

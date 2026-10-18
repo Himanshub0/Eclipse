@@ -4,6 +4,7 @@ import { TabSidebar } from './components/TabSidebar';
 import { BrowserToolbar } from './components/BrowserToolbar';
 import { AddressBarRef } from './components/AddressBar';
 import { SettingsModal } from './components/SettingsModal';
+import { NewTabPage } from './components/NewTabPage';
 import { DEFAULT_SETTINGS, type EclipseSettings } from './types/settings';
 import './styles/toolbar.css';
 
@@ -27,6 +28,7 @@ export const App: React.FC = () => {
 
   const [settings, setSettings] = useState<EclipseSettings>(DEFAULT_SETTINGS);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [dismissedError, setDismissedError] = useState<string | null>(null);
 
   const addressBarRef = useRef<AddressBarRef>(null);
@@ -140,6 +142,13 @@ export const App: React.FC = () => {
         return;
       }
 
+      // Ctrl+B -> Toggle Sidebar Collapse
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setIsSidebarCollapsed((prev) => !prev);
+        return;
+      }
+
       // Ctrl+W -> Close Tab
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'w') {
         e.preventDefault();
@@ -208,6 +217,8 @@ export const App: React.FC = () => {
       <TabSidebar
         tabs={tabs}
         activeTabId={activeTabId}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         onSelectTab={(tabId) => void switchTab(tabId)}
         onCloseTab={(tabId) => void closeTab(tabId)}
         onCreateTab={() => void createTab()}
@@ -222,6 +233,7 @@ export const App: React.FC = () => {
           isLoading={activeTab.isLoading}
           canGoBack={activeTab.canGoBack}
           canGoForward={activeTab.canGoForward}
+          searchProvider={settings.searchProvider}
           onNavigate={(newUrl) => {
             setDismissedError(null);
             void navigate(newUrl);
@@ -250,6 +262,17 @@ export const App: React.FC = () => {
               ✕
             </button>
           </div>
+        )}
+
+        {/* Atmospheric Eclipse New-Tab Page rendered when on blank tab */}
+        {(!activeTab.url || activeTab.url === 'about:blank') && (
+          <NewTabPage
+            onNavigate={(newUrl) => {
+              setDismissedError(null);
+              void navigate(newUrl);
+            }}
+            searchProvider={settings.searchProvider}
+          />
         )}
       </div>
 
