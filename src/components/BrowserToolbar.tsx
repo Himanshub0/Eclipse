@@ -9,6 +9,8 @@ interface BrowserToolbarProps {
   canGoBack: boolean;
   canGoForward: boolean;
   searchProvider?: SearchProviderId;
+  isBookmarked?: boolean;
+  onToggleBookmark?: () => void;
   onNavigate: (url: string) => void;
   onGoBack: () => void;
   onGoForward: () => void;
@@ -25,6 +27,8 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
   canGoBack,
   canGoForward,
   searchProvider,
+  isBookmarked,
+  onToggleBookmark,
   onNavigate,
   onGoBack,
   onGoForward,
@@ -110,6 +114,8 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
             currentUrl={url}
             isLoading={isLoading}
             searchProvider={searchProvider}
+            isBookmarked={isBookmarked}
+            onToggleBookmark={onToggleBookmark}
             onNavigate={onNavigate}
           />
         </div>

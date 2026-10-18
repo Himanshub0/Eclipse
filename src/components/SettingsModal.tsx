@@ -7,6 +7,7 @@ import type {
   AccentChoice,
   SearchProviderId,
 } from '../types/settings';
+import type { BookmarkItem, HistoryItem } from '../types/browser';
 import {
   PaletteIcon,
   HomeIcon,
@@ -18,24 +19,48 @@ import {
   CheckIcon,
   FolderIcon,
   SpinnerIcon,
+  BookmarksIcon,
+  HistoryIcon,
 } from './Icons';
+
+export type SettingsSection =
+  | 'appearance'
+  | 'general'
+  | 'search'
+  | 'privacy'
+  | 'downloads'
+  | 'bookmarks'
+  | 'history'
+  | 'about';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   settings: EclipseSettings;
   onUpdateSettings: (partial: Partial<EclipseSettings>) => void;
+  initialSection?: SettingsSection;
+  bookmarks?: BookmarkItem[];
+  history?: HistoryItem[];
+  onNavigate?: (url: string) => void;
+  onRemoveBookmark?: (id: string) => void;
+  onDeleteHistoryEntry?: (id: string) => void;
+  onClearHistory?: () => void;
 }
-
-type SettingsSection = 'appearance' | 'general' | 'search' | 'privacy' | 'downloads' | 'about';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
   settings,
   onUpdateSettings,
+  initialSection,
+  bookmarks = [],
+  history = [],
+  onNavigate,
+  onRemoveBookmark,
+  onDeleteHistoryEntry,
+  onClearHistory,
 }) => {
-  const [activeSection, setActiveSection] = useState<SettingsSection>('appearance');
+  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection || 'appearance');
   const [runtimeVersions, setRuntimeVersions] = useState<RuntimeVersions | null>(null);
   const [downloads, setDownloads] = useState<DownloadItemInfo[]>([]);
 
@@ -54,6 +79,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setHomepageInput(settings.homepage);
     setCustomSearchInput(settings.customSearchUrl);
   }, [settings]);
+
+  useEffect(() => {
+    if (isOpen && initialSection) {
+      setActiveSection(initialSection);
+    }
+  }, [isOpen, initialSection]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -145,6 +176,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <button
               type="button"
+              className={`settings-nav-item ${activeSection === 'bookmarks' ? 'active' : ''}`}
+              onClick={() => setActiveSection('bookmarks')}
+            >
+              <BookmarksIcon size={16} />
+              <span>Bookmarks</span>
+            </button>
+
+            <button
+              type="button"
+              className={`settings-nav-item ${activeSection === 'history' ? 'active' : ''}`}
+              onClick={() => setActiveSection('history')}
+            >
+              <HistoryIcon size={16} />
+              <span>History</span>
+            </button>
+
+            <button
+              type="button"
               className={`settings-nav-item ${activeSection === 'about' ? 'active' : ''}`}
               onClick={() => setActiveSection('about')}
             >
@@ -163,6 +212,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeSection === 'search' && 'Search Engine'}
               {activeSection === 'privacy' && 'Privacy & Security'}
               {activeSection === 'downloads' && 'Downloads'}
+              {activeSection === 'bookmarks' && 'Bookmarks Manager'}
+              {activeSection === 'history' && 'Browsing History'}
               {activeSection === 'about' && 'About Eclipse'}
             </h2>
             <button
@@ -480,7 +531,121 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             )}
 
-            {/* 6. ABOUT ECLIPSE */}
+            {/* 6. BOOKMARKS */}
+            {activeSection === 'bookmarks' && (
+              <div className="settings-group">
+                <div className="settings-card">
+                  <h3 className="settings-card-title">Saved Bookmarks ({bookmarks.length})</h3>
+                  <p className="settings-card-desc">
+                    Press <kbd>Ctrl+D</kbd> or click the star in the address bar to bookmark pages.
+                  </p>
+
+                  {bookmarks.length === 0 ? (
+                    <div className="downloads-empty-state">
+                      <BookmarksIcon size={24} className="downloads-empty-icon" />
+                      <p>No bookmarks saved yet</p>
+                    </div>
+                  ) : (
+                    <div className="downloads-list">
+                      {bookmarks.map((bm) => (
+                        <div key={bm.id} className="download-item-card">
+                          <div className="download-item-info">
+                            <span className="download-filename">{bm.title}</span>
+                            <span className="download-meta-text">{bm.url}</span>
+                          </div>
+                          <div className="download-actions">
+                            <button
+                              type="button"
+                              className="download-action-btn"
+                              onClick={() => {
+                                onClose();
+                                onNavigate?.(bm.url);
+                              }}
+                            >
+                              Open
+                            </button>
+                            <button
+                              type="button"
+                              className="download-action-btn danger"
+                              onClick={() => onRemoveBookmark?.(bm.id)}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 7. HISTORY */}
+            {activeSection === 'history' && (
+              <div className="settings-group">
+                <div className="settings-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div>
+                      <h3 className="settings-card-title">Browsing History ({history.length})</h3>
+                      <p className="settings-card-desc">
+                        Recently visited websites and pages.
+                      </p>
+                    </div>
+                    {history.length > 0 && onClearHistory && (
+                      <button
+                        type="button"
+                        className="download-action-btn danger"
+                        onClick={onClearHistory}
+                      >
+                        Clear History
+                      </button>
+                    )}
+                  </div>
+
+                  {history.length === 0 ? (
+                    <div className="downloads-empty-state">
+                      <HistoryIcon size={24} className="downloads-empty-icon" />
+                      <p>No browsing history recorded</p>
+                    </div>
+                  ) : (
+                    <div className="downloads-list">
+                      {history.map((item) => (
+                        <div key={item.id} className="download-item-card">
+                          <div className="download-item-info">
+                            <span className="download-filename">{item.title}</span>
+                            <span className="download-meta-text">
+                              {item.url} • {new Date(item.visitedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div className="download-actions">
+                            <button
+                              type="button"
+                              className="download-action-btn"
+                              onClick={() => {
+                                onClose();
+                                onNavigate?.(item.url);
+                              }}
+                            >
+                              Open
+                            </button>
+                            <button
+                              type="button"
+                              className="download-action-btn danger icon-only"
+                              title="Delete entry"
+                              onClick={() => onDeleteHistoryEntry?.(item.id)}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 8. ABOUT ECLIPSE */}
             {activeSection === 'about' && (
               <div className="settings-group">
                 <div className="settings-card">

@@ -1,7 +1,9 @@
-import { app, BrowserWindow, ipcMain, Menu, session } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, session, dialog } from 'electron';
 import path from 'path';
-import { BrowserViewManager } from './browser-view';
+import { BrowserViewManager, WindowDelegate } from './browser-view';
 import { SettingsStore } from './settings-store';
+import { BookmarksStore } from './bookmarks-store';
+import { HistoryStore } from './history-store';
 import { DownloadsManager } from './downloads-manager';
 import {
   IPC_CHANNELS,
@@ -10,21 +12,60 @@ import {
   validateLayoutBoundsPayload,
   validateSettingsPayload,
   validateClearDataPayload,
+  validateFindInPageOptions,
+  validateMoveTabDirection,
 } from './ipc';
 import type { RuntimeVersions } from '../src/types/settings';
 
 let mainWindow: BrowserWindow | null = null;
 let browserViewManager: BrowserViewManager | null = null;
+const windowManagers = new Map<number, BrowserViewManager>();
+
 const settingsStore = new SettingsStore();
+const bookmarksStore = new BookmarksStore();
+const historyStore = new HistoryStore();
 const downloadsManager = new DownloadsManager();
 
-function createMainWindow(): BrowserWindow {
+function getManagerForEvent(event: Electron.IpcMainInvokeEvent): BrowserViewManager | null {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && windowManagers.has(win.id)) {
+    return windowManagers.get(win.id)!;
+  }
+  return browserViewManager;
+}
+
+function showTaskManager(): void {
+  const metrics = app.getAppMetrics();
+  let msg = 'Process Metrics:\n\n';
+  for (const m of metrics) {
+    const memoryMB = Math.round((m.memory.workingSetSize || 0) / 1024);
+    msg += `• [${m.type}] PID ${m.pid}: CPU ${m.cpu.percentCPUUsage.toFixed(1)}%, Mem ${memoryMB} MB\n`;
+  }
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Eclipse Task Manager',
+    message: 'Active Processes & System Performance',
+    detail: msg,
+    buttons: ['OK'],
+  });
+}
+
+const windowDelegate: WindowDelegate = {
+  onNewWindow: (url?: string, isPrivate = false) => {
+    createAppWindow(url, isPrivate);
+  },
+  onOpenTaskManager: () => {
+    showTaskManager();
+  },
+};
+
+function createAppWindow(initialUrl?: string, isPrivate = false): BrowserWindow {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    title: 'Eclipse',
+    title: isPrivate ? 'Eclipse (Private)' : 'Eclipse',
     backgroundColor: '#101312',
     titleBarStyle: 'hidden',
     titleBarOverlay: {
@@ -37,6 +78,7 @@ function createMainWindow(): BrowserWindow {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
+      partition: isPrivate ? `private-${Date.now()}` : undefined,
     },
   });
 
@@ -56,71 +98,283 @@ function createMainWindow(): BrowserWindow {
     return { action: 'deny' };
   });
 
+  const manager = new BrowserViewManager(
+    win,
+    settingsStore,
+    bookmarksStore,
+    historyStore,
+    windowDelegate,
+    240,
+    44
+  );
+  windowManagers.set(win.id, manager);
+
+  if (!mainWindow) {
+    mainWindow = win;
+    browserViewManager = manager;
+    downloadsManager.setWindow(win);
+  }
+
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+  if (devServerUrl) {
+    void win.loadURL(devServerUrl);
+  } else {
+    const indexPath = path.join(__dirname, '../dist/index.html');
+    void win.loadFile(indexPath);
+  }
+
+  win.once('ready-to-show', () => {
+    win.show();
+    win.focus();
+    if (initialUrl) {
+      manager.createTab(initialUrl);
+    }
+  });
+
+  win.on('closed', () => {
+    windowManagers.delete(win.id);
+    if (mainWindow === win) {
+      const remaining = BrowserWindow.getAllWindows();
+      if (remaining.length > 0) {
+        mainWindow = remaining[0];
+        browserViewManager = windowManagers.get(mainWindow.id) || null;
+      } else {
+        mainWindow = null;
+        browserViewManager = null;
+      }
+    }
+  });
+
   return win;
 }
 
 function registerIpcHandlers(): void {
   // Navigation & Tabs
-  ipcMain.handle(IPC_CHANNELS.NAVIGATE, async (_event, rawUrl: unknown) => {
-    if (!browserViewManager) return false;
+  ipcMain.handle(IPC_CHANNELS.NAVIGATE, async (event, rawUrl: unknown) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return false;
     const validated = validateUrlPayload(rawUrl);
-    return browserViewManager.navigate(validated);
+    return mgr.navigate(validated);
   });
 
-  ipcMain.handle(IPC_CHANNELS.GO_BACK, async () => {
-    if (!browserViewManager) return false;
-    return browserViewManager.goBack();
+  ipcMain.handle(IPC_CHANNELS.GO_BACK, async (event) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return false;
+    return mgr.goBack();
   });
 
-  ipcMain.handle(IPC_CHANNELS.GO_FORWARD, async () => {
-    if (!browserViewManager) return false;
-    return browserViewManager.goForward();
+  ipcMain.handle(IPC_CHANNELS.GO_FORWARD, async (event) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return false;
+    return mgr.goForward();
   });
 
-  ipcMain.handle(IPC_CHANNELS.RELOAD, async () => {
-    if (!browserViewManager) return false;
-    return browserViewManager.reload();
+  ipcMain.handle(IPC_CHANNELS.RELOAD, async (event) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return false;
+    return mgr.reload();
   });
 
-  ipcMain.handle(IPC_CHANNELS.STOP_LOADING, async () => {
-    if (!browserViewManager) return false;
-    return browserViewManager.stopLoading();
+  ipcMain.handle(IPC_CHANNELS.RELOAD_IGNORING_CACHE, async (event) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return false;
+    return mgr.reloadIgnoringCache();
   });
 
-  ipcMain.handle(IPC_CHANNELS.CREATE_TAB, async (_event, rawUrl?: unknown) => {
-    if (!browserViewManager) return '';
+  ipcMain.handle(IPC_CHANNELS.STOP_LOADING, async (event) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return false;
+    return mgr.stopLoading();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.OPEN_HOMEPAGE, async (event) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return false;
+    return mgr.openHomepage();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.OPEN_LOCAL_FILE, async (event) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return false;
+    return mgr.openLocalFile();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.VIEW_SOURCE, async (event) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return false;
+    return mgr.viewSource();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PRINT, async (event) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return false;
+    return mgr.print();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SAVE_PAGE, async (event) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return false;
+    return mgr.savePage();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CREATE_TAB, async (event, rawUrl?: unknown) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return '';
     const initialUrl = typeof rawUrl === 'string' ? validateUrlPayload(rawUrl) : undefined;
-    return browserViewManager.createTab(initialUrl);
+    return mgr.createTab(initialUrl);
   });
 
-  ipcMain.handle(IPC_CHANNELS.CLOSE_TAB, async (_event, rawTabId: unknown) => {
-    if (!browserViewManager) return;
+  ipcMain.handle(IPC_CHANNELS.CLOSE_TAB, async (event, rawTabId: unknown) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return;
     const tabId = validateTabIdPayload(rawTabId);
-    browserViewManager.closeTab(tabId);
+    mgr.closeTab(tabId);
   });
 
-  ipcMain.handle(IPC_CHANNELS.SWITCH_TAB, async (_event, rawTabId: unknown) => {
-    if (!browserViewManager) return;
+  ipcMain.handle(IPC_CHANNELS.SWITCH_TAB, async (event, rawTabId: unknown) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return;
     const tabId = validateTabIdPayload(rawTabId);
-    browserViewManager.switchTab(tabId);
+    mgr.switchTab(tabId);
   });
 
-  ipcMain.handle(IPC_CHANNELS.GET_STATE, async () => {
-    if (!browserViewManager) {
+  ipcMain.handle(IPC_CHANNELS.REOPEN_CLOSED_TAB, async (event) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return null;
+    return mgr.reopenClosedTab();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.MOVE_TAB, async (event, rawDirection: unknown) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return;
+    const dir = validateMoveTabDirection(rawDirection);
+    mgr.moveTab(dir);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GET_STATE, async (event) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) {
       return { tabs: [], activeTabId: '' };
     }
-    return browserViewManager.getAppState();
+    return mgr.getAppState();
   });
 
-  ipcMain.handle(IPC_CHANNELS.SET_LAYOUT_BOUNDS, async (_event, rawLayout: unknown) => {
-    if (!browserViewManager) return;
+  ipcMain.handle(IPC_CHANNELS.SET_LAYOUT_BOUNDS, async (event, rawLayout: unknown) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return;
     const { sidebarWidth, topBarHeight } = validateLayoutBoundsPayload(rawLayout);
-    browserViewManager.setLayoutBounds(sidebarWidth, topBarHeight);
+    mgr.setLayoutBounds(sidebarWidth, topBarHeight);
   });
 
-  ipcMain.handle(IPC_CHANNELS.SET_SETTINGS_OPEN, async (_event, rawOpen: unknown) => {
-    if (!browserViewManager) return;
-    browserViewManager.setSettingsOpen(Boolean(rawOpen));
+  ipcMain.handle(IPC_CHANNELS.SET_SETTINGS_OPEN, async (event, rawOpen: unknown) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return;
+    mgr.setSettingsOpen(Boolean(rawOpen));
+  });
+
+  // Windows & Screen
+  ipcMain.handle(IPC_CHANNELS.NEW_WINDOW, async (_event, rawUrl?: unknown, isPrivate?: unknown) => {
+    const url = typeof rawUrl === 'string' ? validateUrlPayload(rawUrl) : undefined;
+    createAppWindow(url, Boolean(isPrivate));
+  });
+
+  ipcMain.handle(IPC_CHANNELS.TOGGLE_FULLSCREEN, async (event) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return false;
+    return mgr.toggleFullscreen();
+  });
+
+  // Zoom
+  ipcMain.handle(IPC_CHANNELS.ZOOM_IN, async (event) => {
+    const mgr = getManagerForEvent(event);
+    return mgr ? mgr.zoomIn() : 0;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.ZOOM_OUT, async (event) => {
+    const mgr = getManagerForEvent(event);
+    return mgr ? mgr.zoomOut() : 0;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.RESET_ZOOM, async (event) => {
+    const mgr = getManagerForEvent(event);
+    return mgr ? mgr.resetZoom() : 0;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GET_ZOOM, async (event) => {
+    const mgr = getManagerForEvent(event);
+    return mgr ? mgr.getZoomLevel() : 0;
+  });
+
+  // Find In Page
+  ipcMain.handle(IPC_CHANNELS.FIND_IN_PAGE, async (event, rawText: unknown, rawOptions: unknown) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr || typeof rawText !== 'string') return 0;
+    const options = validateFindInPageOptions(rawOptions);
+    return mgr.findInPage(rawText, options);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.STOP_FIND_IN_PAGE, async (event, rawAction: unknown) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return;
+    const action =
+      rawAction === 'keepSelection' || rawAction === 'activateSelection'
+        ? rawAction
+        : 'clearSelection';
+    mgr.stopFindInPage(action);
+  });
+
+  // Bookmarks
+  ipcMain.handle(IPC_CHANNELS.GET_BOOKMARKS, async () => {
+    return bookmarksStore.getBookmarks();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.TOGGLE_BOOKMARK, async (_event, rawUrl: unknown, rawTitle: unknown) => {
+    const url = validateUrlPayload(rawUrl);
+    const title = typeof rawTitle === 'string' ? rawTitle.trim() : url;
+    const result = bookmarksStore.toggleBookmark(url, title);
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send(IPC_CHANNELS.BOOKMARKS_CHANGED, bookmarksStore.getBookmarks());
+    }
+    return result;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REMOVE_BOOKMARK, async (_event, rawUrlOrId: unknown) => {
+    if (typeof rawUrlOrId !== 'string') return false;
+    const ok = bookmarksStore.removeBookmark(rawUrlOrId);
+    if (ok) {
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send(IPC_CHANNELS.BOOKMARKS_CHANGED, bookmarksStore.getBookmarks());
+      }
+    }
+    return ok;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.IS_BOOKMARKED, async (_event, rawUrl: unknown) => {
+    if (typeof rawUrl !== 'string') return false;
+    return bookmarksStore.isBookmarked(rawUrl);
+  });
+
+  // History
+  ipcMain.handle(IPC_CHANNELS.GET_HISTORY, async () => {
+    return historyStore.getHistory();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CLEAR_HISTORY, async () => {
+    historyStore.clearHistory();
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send(IPC_CHANNELS.HISTORY_CHANGED, []);
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.DELETE_HISTORY_ENTRY, async (_event, rawId: unknown) => {
+    if (typeof rawId !== 'string') return false;
+    const ok = historyStore.deleteEntry(rawId);
+    if (ok) {
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send(IPC_CHANNELS.HISTORY_CHANGED, historyStore.getHistory());
+      }
+    }
+    return ok;
   });
 
   // Settings
@@ -130,8 +384,8 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.UPDATE_SETTINGS, async (_event, rawSettings: unknown) => {
     const updated = settingsStore.updateSettings(validateSettingsPayload(rawSettings));
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(IPC_CHANNELS.SETTINGS_CHANGED, updated);
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send(IPC_CHANNELS.SETTINGS_CHANGED, updated);
     }
     return updated;
   });
@@ -193,21 +447,8 @@ async function initializeApp(): Promise<void> {
   Menu.setApplicationMenu(null);
   registerIpcHandlers();
 
-  mainWindow = createMainWindow();
   downloadsManager.initialize();
-  downloadsManager.setWindow(mainWindow);
-  browserViewManager = new BrowserViewManager(mainWindow, settingsStore, 240, 44);
-
-  const devServerUrl = process.env.VITE_DEV_SERVER_URL;
-  if (devServerUrl) {
-    void mainWindow.loadURL(devServerUrl);
-  } else {
-    const indexPath = path.join(__dirname, '../dist/index.html');
-    void mainWindow.loadFile(indexPath);
-  }
-
-  mainWindow.show();
-  mainWindow.focus();
+  createAppWindow();
 
   if (process.env.SMOKE_TEST === '1') {
     console.log('[SMOKE_TEST] Window and WebContentsView initialized successfully.');
@@ -216,11 +457,6 @@ async function initializeApp(): Promise<void> {
       app.exit(0);
     }, 1000);
   }
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-    browserViewManager = null;
-  });
 }
 
 app.whenReady().then(initializeApp).catch((err) => {

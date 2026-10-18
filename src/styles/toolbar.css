@@ -1679,6 +1679,255 @@ html, body, #root {
 }
 
 /* ==========================================================================
+   FAVICON & BOOKMARK STAR
+   ========================================================================== */
+
+.tab-favicon-img {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  object-fit: contain;
+}
+
+.address-bar-bookmark-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+}
+
+.address-bar-bookmark-btn:hover {
+  color: var(--accent-badge);
+  background-color: var(--bg-btn-hover);
+}
+
+.address-bar-bookmark-btn.active {
+  color: #fbbf24;
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.4));
+}
+
+/* ==========================================================================
+   BOOKMARKS BAR (Ctrl+Shift+B)
+   ========================================================================== */
+
+.eclipse-bookmarks-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  background-color: var(--bg-topbar);
+  border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto;
+  overflow-y: hidden;
+  user-select: none;
+  scrollbar-width: none;
+  -webkit-app-region: no-drag;
+}
+
+.eclipse-bookmarks-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.bookmarks-bar-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.bookmarks-bar-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.bookmarks-empty-tip {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.bookmarks-empty-tip kbd {
+  font-family: inherit;
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--bg-btn-hover);
+  border: 1px solid var(--border-subtle);
+  color: var(--accent-badge);
+}
+
+.bookmark-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--radius-xs);
+  background-color: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 180px;
+  transition: all var(--transition-smooth);
+}
+
+.bookmark-chip:hover {
+  background-color: var(--bg-btn-hover);
+  border-color: var(--border-medium);
+  color: var(--color-bone);
+}
+
+.bookmark-chip-icon {
+  color: var(--accent-badge);
+  flex-shrink: 0;
+}
+
+.bookmark-chip-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--transition-smooth), color var(--transition-smooth);
+}
+
+.bookmark-chip:hover .bookmark-chip-remove {
+  opacity: 0.75;
+}
+
+.bookmark-chip-remove:hover {
+  opacity: 1 !important;
+  color: var(--color-crimson);
+}
+
+/* ==========================================================================
+   FIND IN PAGE BAR (Floating Glass Card)
+   ========================================================================== */
+
+.find-in-page-bar {
+  position: absolute;
+  top: 48px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-topbar);
+  background-color: rgba(22, 27, 24, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-medium);
+  border-top: 1px solid var(--border-specular);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 16px rgba(63, 143, 104, 0.12);
+  animation: findBarSlideDown 0.18s var(--ease-spring);
+}
+
+@keyframes findBarSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.find-in-page-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.find-in-page-input {
+  width: 170px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.find-in-page-input::placeholder {
+  color: var(--text-muted);
+}
+
+.find-in-page-count {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+.find-in-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.find-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+}
+
+.find-action-btn:hover:not(:disabled) {
+  background-color: var(--bg-btn-hover);
+  color: var(--color-bone);
+}
+
+.find-action-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.find-action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.find-action-btn.close:hover {
+  color: var(--color-crimson);
+}
+
+/* ==========================================================================
    ACCESSIBILITY & REDUCED MOTION / TRANSPARENCY
    ========================================================================== */
 

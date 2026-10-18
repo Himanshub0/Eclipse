@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
-import { LockIcon, GoIcon, SpinnerIcon, CloseIcon } from './Icons';
+import { LockIcon, GoIcon, SpinnerIcon, CloseIcon, StarIcon } from './Icons';
 import type { SearchProviderId } from '../types/settings';
 
 export interface AddressBarRef {
@@ -10,11 +10,13 @@ interface AddressBarProps {
   currentUrl: string;
   isLoading: boolean;
   searchProvider?: SearchProviderId;
+  isBookmarked?: boolean;
+  onToggleBookmark?: () => void;
   onNavigate: (url: string) => void;
 }
 
 export const AddressBar = forwardRef<AddressBarRef, AddressBarProps>(
-  ({ currentUrl, isLoading, searchProvider, onNavigate }, ref) => {
+  ({ currentUrl, isLoading, searchProvider, isBookmarked, onToggleBookmark, onNavigate }, ref) => {
     const normalizedUrl = (!currentUrl || currentUrl === 'about:blank') ? '' : currentUrl;
     const [inputValue, setInputValue] = useState(normalizedUrl);
     const [isFocused, setIsFocused] = useState(false);
@@ -112,6 +114,20 @@ export const AddressBar = forwardRef<AddressBarRef, AddressBarProps>(
             }}
           >
             <CloseIcon size={12} />
+          </button>
+        )}
+
+        {normalizedUrl && onToggleBookmark && (
+          <button
+            type="button"
+            className={`address-bar-bookmark-btn ${isBookmarked ? 'active' : ''}`}
+            title={isBookmarked ? 'Remove bookmark (Ctrl+D)' : 'Bookmark this tab (Ctrl+D)'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleBookmark();
+            }}
+          >
+            <StarIcon size={14} filled={isBookmarked} />
           </button>
         )}
 

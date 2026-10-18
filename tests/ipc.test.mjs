@@ -7,6 +7,8 @@ import {
   validateLayoutBoundsPayload,
   validateSettingsPayload,
   validateClearDataPayload,
+  validateFindInPageOptions,
+  validateMoveTabDirection,
   IPC_CHANNELS,
 } from '../electron/ipc.ts';
 
@@ -16,7 +18,20 @@ test('IPC Validator test suite', async (t) => {
     assert.equal(IPC_CHANNELS.CREATE_TAB, 'browser:create-tab');
     assert.equal(IPC_CHANNELS.SWITCH_TAB, 'browser:switch-tab');
     assert.equal(IPC_CHANNELS.CLOSE_TAB, 'browser:close-tab');
+    assert.equal(IPC_CHANNELS.REOPEN_CLOSED_TAB, 'browser:reopen-closed-tab');
+    assert.equal(IPC_CHANNELS.MOVE_TAB, 'browser:move-tab');
     assert.equal(IPC_CHANNELS.STATE_CHANGED, 'browser:state-changed');
+    assert.equal(IPC_CHANNELS.FIND_IN_PAGE, 'browser:find-in-page');
+    assert.equal(IPC_CHANNELS.STOP_FIND_IN_PAGE, 'browser:stop-find-in-page');
+    assert.equal(IPC_CHANNELS.FOUND_IN_PAGE, 'browser:found-in-page');
+    assert.equal(IPC_CHANNELS.ZOOM_IN, 'browser:zoom-in');
+    assert.equal(IPC_CHANNELS.ZOOM_OUT, 'browser:zoom-out');
+    assert.equal(IPC_CHANNELS.RESET_ZOOM, 'browser:reset-zoom');
+    assert.equal(IPC_CHANNELS.GET_BOOKMARKS, 'bookmarks:get');
+    assert.equal(IPC_CHANNELS.TOGGLE_BOOKMARK, 'bookmarks:toggle');
+    assert.equal(IPC_CHANNELS.GET_HISTORY, 'history:get');
+    assert.equal(IPC_CHANNELS.CLEAR_HISTORY, 'history:clear');
+    assert.equal(IPC_CHANNELS.TRIGGER_ACTION, 'browser:trigger-action');
   });
 
   await t.test('validates valid URL strings', () => {
@@ -43,6 +58,23 @@ test('IPC Validator test suite', async (t) => {
 
     assert.throws(() => validateLayoutBoundsPayload(null), TypeError);
     assert.throws(() => validateLayoutBoundsPayload({ sidebarWidth: -5, topBarHeight: 40 }), RangeError);
+  });
+
+  await t.test('validates find in page options', () => {
+    assert.deepEqual(validateFindInPageOptions(undefined), { forward: true, findNext: false, matchCase: false });
+    assert.deepEqual(validateFindInPageOptions('invalid'), { forward: true, findNext: false, matchCase: false });
+    assert.deepEqual(validateFindInPageOptions({ forward: false, findNext: true, matchCase: true }), {
+      forward: false,
+      findNext: true,
+      matchCase: true,
+    });
+  });
+
+  await t.test('validates move tab direction', () => {
+    assert.equal(validateMoveTabDirection('left'), 'left');
+    assert.equal(validateMoveTabDirection('right'), 'right');
+    assert.throws(() => validateMoveTabDirection('up'), TypeError);
+    assert.throws(() => validateMoveTabDirection(123), TypeError);
   });
 
   await t.test('validates settings payload', () => {

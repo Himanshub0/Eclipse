@@ -1,4 +1,4 @@
-import type { ClearDataOptions } from '../src/types/browser';
+import type { ClearDataOptions, FindInPageOptions } from '../src/types/browser';
 import type { EclipseSettings, ThemeMode, AccentChoice, SearchProviderId, StartupMode } from '../src/types/settings';
 
 export const IPC_CHANNELS = {
@@ -6,14 +6,53 @@ export const IPC_CHANNELS = {
   GO_BACK: 'browser:go-back',
   GO_FORWARD: 'browser:go-forward',
   RELOAD: 'browser:reload',
+  RELOAD_IGNORING_CACHE: 'browser:reload-ignoring-cache',
   STOP_LOADING: 'browser:stop-loading',
+  OPEN_HOMEPAGE: 'browser:open-homepage',
+  OPEN_LOCAL_FILE: 'browser:open-local-file',
+  VIEW_SOURCE: 'browser:view-source',
+  PRINT: 'browser:print',
+  SAVE_PAGE: 'browser:save-page',
   CREATE_TAB: 'browser:create-tab',
   CLOSE_TAB: 'browser:close-tab',
   SWITCH_TAB: 'browser:switch-tab',
+  REOPEN_CLOSED_TAB: 'browser:reopen-closed-tab',
+  MOVE_TAB: 'browser:move-tab',
   GET_STATE: 'browser:get-state',
   STATE_CHANGED: 'browser:state-changed',
   SET_LAYOUT_BOUNDS: 'browser:set-layout-bounds',
   SET_SETTINGS_OPEN: 'browser:set-settings-open',
+
+  // Windows & Screen
+  NEW_WINDOW: 'browser:new-window',
+  TOGGLE_FULLSCREEN: 'browser:toggle-fullscreen',
+
+  // Zoom
+  ZOOM_IN: 'browser:zoom-in',
+  ZOOM_OUT: 'browser:zoom-out',
+  RESET_ZOOM: 'browser:reset-zoom',
+  GET_ZOOM: 'browser:get-zoom',
+
+  // Find In Page
+  FIND_IN_PAGE: 'browser:find-in-page',
+  STOP_FIND_IN_PAGE: 'browser:stop-find-in-page',
+  FOUND_IN_PAGE: 'browser:found-in-page',
+
+  // Bookmarks
+  GET_BOOKMARKS: 'bookmarks:get',
+  TOGGLE_BOOKMARK: 'bookmarks:toggle',
+  REMOVE_BOOKMARK: 'bookmarks:remove',
+  IS_BOOKMARKED: 'bookmarks:is-bookmarked',
+  BOOKMARKS_CHANGED: 'bookmarks:changed',
+
+  // History
+  GET_HISTORY: 'history:get',
+  CLEAR_HISTORY: 'history:clear',
+  DELETE_HISTORY_ENTRY: 'history:delete-entry',
+  HISTORY_CHANGED: 'history:changed',
+
+  // Action Dispatch
+  TRIGGER_ACTION: 'browser:trigger-action',
 
   // Settings
   GET_SETTINGS: 'settings:get',
@@ -90,6 +129,25 @@ export function validateClearDataPayload(value: unknown): ClearDataOptions {
     cookies: Boolean(obj.cookies),
     storage: Boolean(obj.storage),
   };
+}
+
+export function validateFindInPageOptions(value: unknown): FindInPageOptions {
+  if (!value || typeof value !== 'object') {
+    return { forward: true, findNext: false, matchCase: false };
+  }
+  const obj = value as Record<string, unknown>;
+  return {
+    forward: obj.forward !== false,
+    findNext: Boolean(obj.findNext),
+    matchCase: Boolean(obj.matchCase),
+  };
+}
+
+export function validateMoveTabDirection(value: unknown): 'left' | 'right' {
+  if (value === 'left' || value === 'right') {
+    return value;
+  }
+  throw new TypeError(`Invalid move tab direction: expected 'left' | 'right', received ${value}`);
 }
 
 const VALID_THEMES: ReadonlyArray<ThemeMode> = ['dark', 'light', 'system'];

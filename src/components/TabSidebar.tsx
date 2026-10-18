@@ -106,6 +106,15 @@ export const TabSidebar: React.FC<TabSidebarProps> = ({
               <div className="tab-status-icon">
                 {tab.isLoading ? (
                   <SpinnerIcon size={14} className="loading-spinner" />
+                ) : tab.favicon ? (
+                  <img
+                    src={tab.favicon}
+                    alt=""
+                    className="tab-favicon-img"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
                 ) : (
                   <GlobeIcon size={14} className="tab-globe-icon" />
                 )}
