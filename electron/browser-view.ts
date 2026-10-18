@@ -47,7 +47,8 @@ export class BrowserViewManager {
     historyStore: HistoryStore,
     delegate?: WindowDelegate,
     initialSidebarWidth = 240,
-    initialTopBarHeight = 44
+    initialTopBarHeight = 44,
+    initialUrl?: string
   ) {
     this.win = win;
     this.settingsStore = settingsStore;
@@ -58,9 +59,10 @@ export class BrowserViewManager {
     this.topBarHeight = initialTopBarHeight;
 
     const startupUrl =
-      this.settingsStore.getSettings().startupMode === 'homepage'
+      initialUrl ||
+      (this.settingsStore.getSettings().startupMode === 'homepage'
         ? this.settingsStore.getSettings().homepage || DEFAULT_HOMEPAGE
-        : 'about:blank';
+        : 'about:blank');
 
     // Create initial tab
     this.createTab(startupUrl);
@@ -85,17 +87,29 @@ export class BrowserViewManager {
 
     if (this.isSettingsOpen || isBlank) {
       // Hide external website while settings overlay or new-tab page is active
-      active.view.setVisible(false);
+      if (active.view.getVisible()) {
+        active.view.setVisible(false);
+      }
       return;
     }
 
-    active.view.setBounds({
-      x: this.sidebarWidth,
-      y: this.topBarHeight,
-      width: availableWidth,
-      height: availableHeight,
-    });
-    active.view.setVisible(true);
+    const currentBounds = active.view.getBounds();
+    const isVisible = active.view.getVisible();
+    if (
+      !isVisible ||
+      currentBounds.x !== this.sidebarWidth ||
+      currentBounds.y !== this.topBarHeight ||
+      currentBounds.width !== availableWidth ||
+      currentBounds.height !== availableHeight
+    ) {
+      active.view.setBounds({
+        x: this.sidebarWidth,
+        y: this.topBarHeight,
+        width: availableWidth,
+        height: availableHeight,
+      });
+      active.view.setVisible(true);
+    }
   }
 
   public setSettingsOpen(open: boolean): void {

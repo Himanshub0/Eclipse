@@ -25,6 +25,7 @@ const processStartTime = performance.now();
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 app.commandLine.appendSwitch('enable-background-timer-throttling');
+app.commandLine.appendSwitch('enable-dns-prefetching');
 
 let mainWindow: BrowserWindow | null = null;
 let browserViewManager: BrowserViewManager | null = null;
@@ -114,7 +115,8 @@ function createAppWindow(initialUrl?: string, isPrivate = false): BrowserWindow 
     historyStore,
     windowDelegate,
     240,
-    44
+    44,
+    initialUrl
   );
   windowManagers.set(win.id, manager);
 
@@ -135,9 +137,6 @@ function createAppWindow(initialUrl?: string, isPrivate = false): BrowserWindow 
   win.once('ready-to-show', () => {
     win.show();
     win.focus();
-    if (initialUrl) {
-      manager.createTab(initialUrl);
-    }
   });
 
   win.on('closed', () => {
