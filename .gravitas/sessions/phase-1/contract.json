@@ -1,0 +1,47 @@
+{
+  "mode": "implement",
+  "objective": "Build Phase 1 of Project Browser using Electron, TypeScript, React, and Vite",
+  "acceptance_criteria": [
+    "AC-1: Application starts cleanly on Windows with sensible window defaults (1280x800 min size enforced)",
+    "AC-2: Real external websites render inside a dedicated WebContentsView managed by main process",
+    "AC-3: Address bar navigation works with URL normalization (protocol inference, search engine fallback)",
+    "AC-4: Back, forward, and reload operate properly synchronized with webContents events",
+    "AC-5: Address bar updates on page navigation and redirects",
+    "AC-6: Loading states and navigation failures are handled gracefully without crash",
+    "AC-7: Window resize resizes WebContentsView without breaking toolbar or viewport layout",
+    "AC-8: Keyboard shortcuts operate correctly (Ctrl+L, Alt+Left, Alt+Right, Ctrl+R, F5)",
+    "AC-9: Security boundaries strictly enforced (nodeIntegration: false, contextIsolation: true, sandbox: true, no Electron APIs exposed to external sites, permission denial, window-open containment)",
+    "AC-10: TypeScript type checks pass with 0 errors and production build succeeds",
+    "AC-11: Clear README with architecture, setup, and security documentation",
+    "AC-12: Zero mock or unverified features claimed"
+  ],
+  "non_goals": [
+    "Multiple tabs",
+    "Bookmarks or persistent browsing history database",
+    "AI assistant",
+    "Python backend",
+    "MongoDB",
+    "Cloud synchronization",
+    "User accounts",
+    "Ad blocking",
+    "Browser extensions",
+    "Auto-updates or installers"
+  ],
+  "risk": "medium",
+  "budget": "balanced",
+  "allowed_write_scope": [
+    "package.json",
+    "tsconfig.json",
+    "tsconfig.node.json",
+    "tsconfig.electron.json",
+    "vite.config.ts",
+    "index.html",
+    ".gitignore",
+    "README.md",
+    "electron/*",
+    "src/*",
+    "tests/*",
+    ".gravitas/*"
+  ],
+  "verification": "impact"
+}
