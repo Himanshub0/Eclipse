@@ -1,0 +1,1195 @@
+# ECLIPSE BROWSER — MASTER IMPLEMENTATION PROMPT
+## Complete Chromium-Based Desktop Browser Prototype
+
+You are the lead Electron engineer, Chromium integration engineer, TypeScript developer, security engineer, test engineer, and performance engineer for Eclipse Browser.
+
+Your task is to evolve the existing Eclipse Browser repository into a functional, reliable, security-conscious desktop browser prototype with a comprehensive set of standard browser features.
+
+This is an implementation task, not merely a design exercise or a planning document.
+
+You must inspect the actual repository, understand its existing architecture, implement features in controlled phases, run tests, resolve failures, and report verifiable results.
+
+---
+
+# 1. PROJECT CONTEXT
+
+Project name: Eclipse Browser
+
+Application type: Desktop web browser.
+
+Core technology:
+- Electron
+- Chromium through Electron
+- TypeScript
+- React
+- Vite
+- Existing repository dependencies and build system
+
+The existing prototype already launches and renders websites using Chromium through Electron. It has basic navigation and an existing browser shell.
+
+Preserve and build upon the current implementation wherever possible.
+
+Eclipse Browser is NOT a new browser rendering engine. Electron already provides Chromium. Your responsibility is to build a reliable browser application around it.
+
+Do not replace the project with an unrelated application or rebuild working components without a strong technical reason.
+
+# 2. ABSOLUTE PROJECT CONSTRAINTS
+
+## Constraint A: Frontend redesign is frozen
+
+DO NOT:
+- Redesign the interface.
+- Change the theme.
+- Reorganize the visual layout.
+- Add decorative animations.
+- Spend time on visual polish.
+- Replace the current sidebar or tab design.
+- Introduce a new design system.
+- Rebuild working components merely because you dislike their appearance.
+
+Existing frontend components may be modified only when necessary to connect a genuine browser feature to the application.
+
+For example, implementing bookmarks may require wiring the existing bookmark control to a real bookmark service. It does not authorize a redesign of the browser toolbar.
+
+Minimal new dialogs, menus, settings panels, and internal pages are permitted when a feature requires them. Reuse the existing components and styling conventions.
+
+## Constraint B: Prioritize engineering
+
+Focus on:
+1. Functional browser capabilities.
+2. Correct Chromium integration.
+3. Reliable tab and window lifecycle management.
+4. Electron security.
+5. Automated testing.
+6. Memory usage and performance measurement.
+7. Persistent browser data.
+8. Error handling and recovery.
+9. Documentation and reproducible builds.
+
+## Constraint C: Preserve the repository
+
+Before changing files:
+- Inspect the complete project structure.
+- Read package.json and existing project documentation.
+- Identify the Electron main process, preload scripts, renderer, IPC handlers, browser views, persistence layer, and tests.
+- Check the current Git status and existing changes.
+- Identify which features already work.
+
+Never overwrite user changes without permission.
+
+Do not create unrelated documentation, agent instruction files, replacement projects, or duplicated implementations.
+
+Do not delete existing files unless you establish that they are unnecessary and check their references.
+
+Do not change dependencies without explaining why they are needed.
+
+## Constraint D: Implement real functionality
+
+Every implemented feature must do something real.
+
+Do not:
+- Add buttons that only display success messages.
+- Use hardcoded fake browser data.
+- Simulate downloads without downloading files.
+- Claim private browsing without isolated storage.
+- Claim password security while storing passwords in plaintext.
+- Claim RAM savings without benchmark measurements.
+- Claim extension compatibility without actually supporting the required APIs.
+- Mark a test as passed when it was not executed successfully.
+
+If Electron does not provide a feature directly, implement it using an appropriate supported API, or clearly document the limitation.
+
+Use actual Chromium capabilities when possible instead of reimplementing the web platform.
+
+---
+
+# 3. REQUIRED ENGINEERING ARCHITECTURE
+
+First inspect the current architecture. Adapt it rather than blindly replacing it.
+
+Maintain clear separation between these responsibilities.
+
+## A. Electron main process
+
+Responsible for:
+- Application startup and shutdown.
+- Browser windows.
+- WebContentsView or the existing appropriate browser-view mechanism.
+- Browser tab lifecycle.
+- Window lifecycle.
+- Navigation policy.
+- Permission policy.
+- Download handling.
+- Session management.
+- Persistent browser metadata.
+- External application integration.
+- Main-process error handling.
+- Application-level security controls.
+
+## B. Preload layer
+
+Expose only the minimum browser operations required by the renderer.
+
+Requirements:
+- Narrow, explicitly defined APIs.
+- Strong TypeScript types.
+- Input validation.
+- No generic arbitrary IPC execution.
+- No unrestricted Node.js APIs exposed to the renderer.
+- No privileged Electron objects exposed directly to website content.
+- Carefully managed event subscriptions and cleanup.
+
+## C. React renderer
+
+The renderer should:
+- Display browser state.
+- Request browser operations through the approved preload API.
+- Receive validated state updates.
+- Display errors from actual operations.
+- Never gain direct access to privileged main-process capabilities.
+
+Keep the existing interface.
+
+## D. Browser services
+
+Create or adapt separate modules for:
+- Navigation.
+- Tabs and windows.
+- Bookmarks.
+- History.
+- Downloads.
+- Settings.
+- Permissions.
+- Browser session persistence.
+- Memory diagnostics.
+- Private sessions.
+- Profiles.
+- Password storage.
+- Import and export.
+- Recovery and diagnostics.
+
+Avoid giant files containing unrelated business logic.
+
+## E. Persistence
+
+Use the repository's existing persistence mechanism if appropriate.
+
+For browser-owned structured records, use a suitable persistent storage layer such as SQLite when justified by existing dependencies and project requirements.
+
+Do not introduce a database merely for the sake of introducing one.
+
+Do not duplicate Chromium's cookies, cache, local storage, IndexedDB, or other profile-managed data unnecessarily.
+
+Handle malformed data, partial writes, migration, corruption, and version changes safely.
+
+---
+
+# 4. IMPLEMENTATION STRATEGY
+
+Implement the entire feature inventory through sequential milestones.
+
+Do not attempt a massive, untested, all-at-once refactor.
+
+Start by auditing the codebase, create a feature matrix, and then implement the phases in order.
+
+For each feature:
+1. Inspect relevant code.
+2. Identify dependencies and risks.
+3. Implement the smallest complete solution.
+4. Add or update automated tests.
+5. Run targeted tests.
+6. Run the relevant build or type check.
+7. Verify the feature through an actual test or manual verification.
+8. Fix regressions.
+9. Document limitations.
+10. Update the feature matrix using evidence.
+
+Continue to the next feature when the current feature is stable.
+
+Prioritize a functioning prototype while keeping changes small enough to review and understand.
+
+If a tool call, test, or background process hangs, investigate the actual process and terminate only the relevant operation when necessary. Never wait indefinitely or report success without an exit result.
+
+---
+
+# PHASE 0 — REPOSITORY AUDIT AND BASELINE
+
+Before implementing new features:
+
+1. Inspect the repository and its Git status.
+2. Map the current architecture.
+3. Determine the Electron, Chromium, Node.js, React, TypeScript, and build-tool versions where available.
+4. Inventory existing functionality.
+5. Inspect package scripts and test infrastructure.
+6. Run the current test suite.
+7. Run the existing type checker and build.
+8. Record failures that existed before modifications.
+9. Identify security-sensitive entry points.
+10. Establish a reproducible baseline memory measurement.
+
+Create a feature matrix with these statuses:
+
+- Implemented and verified.
+- Partially implemented.
+- Missing.
+- Broken.
+- Not verified.
+
+Do not rewrite working code simply to make the architecture look cleaner.
+
+Deliverable:
+- Repository architecture map.
+- Baseline test and build report.
+- Initial security findings.
+- Initial RAM benchmark methodology.
+- Ordered implementation backlog.
+
+Then proceed to implementation.
+
+---
+
+# PHASE 1 — NAVIGATION AND ADDRESS BAR
+
+Implement and verify:
+
+## Navigation
+- Navigate to URLs.
+- Back.
+- Forward.
+- Reload.
+- Stop loading.
+- Home page.
+- Configurable homepage.
+- Startup page behavior.
+- Redirect handling.
+- Loading progress.
+- Page-load failures.
+- DNS/network error handling.
+- TLS and certificate error handling.
+- Browser-generated error pages when appropriate.
+- Handling of renderer crashes and unresponsive pages.
+
+## Address bar
+- Accept full URLs.
+- Interpret ordinary text as a search query.
+- Configurable default search engine.
+- Correct encoding of search queries.
+- Copy and paste URLs.
+- Paste-and-go where supported by the existing interface.
+- Basic autocomplete based on browsing history and bookmarks.
+- Clear suggestions safely.
+- Display loading status.
+- Display the current URL.
+- Correctly handle redirects and updated page titles.
+
+## URL security
+- Validate input before navigating.
+- Support appropriate schemes such as HTTP and HTTPS.
+- Handle local files through an explicit policy.
+- Reject unexpected or dangerous schemes by default.
+- Prevent websites from navigating the app into privileged internal routes.
+- Do not allow arbitrary JavaScript URLs to invoke privileged behavior.
+- Use an explicit policy for opening external protocols.
+- Never disable web security to make a feature work.
+
+## Search engines
+Implement a configurable search provider system, initially supporting at least one real search engine.
+
+Where practical, support:
+- Default search engine.
+- Search URL template.
+- Search query encoding.
+- Validation of provider configuration.
+
+Deliverable:
+A reliable navigation system with automated tests for valid URLs, invalid URLs, search queries, redirects, and failure cases.
+
+---
+
+# PHASE 2 — COMPLETE KEYBOARD SHORTCUT SYSTEM
+
+Implement a centralized shortcut registry.
+
+Avoid scattered event listeners that conflict with one another.
+
+Support the following Windows/Linux shortcut inventory, adapting behavior to the current platform and application state.
+
+## Function keys
+
+F1:
+- Open Eclipse Browser help or a browser help page if implemented.
+
+F2:
+- No assigned browser-wide action by default.
+
+F3:
+- Find in page or find the next match according to the active find interface.
+
+F4:
+- No assigned browser-wide action by default.
+- Alt+F4 closes the current application window according to standard operating-system behavior.
+
+F5:
+- Reload the current page.
+
+F6:
+- Move focus among appropriate browser interface regions, including the address bar.
+
+F7:
+- Toggle caret browsing only if the required support is implemented and tested.
+- Do not pretend that flipping a setting automatically enables genuine caret browsing.
+
+F8:
+- No browser-wide action by default.
+- Preserve Developer Tools debugging behavior where applicable.
+
+F9:
+- No assigned browser-wide action by default.
+
+F10:
+- Provide appropriate toolbar focus behavior where supported.
+
+F11:
+- Toggle browser full-screen mode.
+
+F12:
+- Open Developer Tools for the intended page.
+
+Avoid interfering with page-level controls when the user is interacting with a webpage.
+
+## Essential navigation shortcuts
+
+Implement and test:
+- Ctrl+L.
+- Alt+D.
+- Ctrl+R.
+- F5.
+- Alt+Left.
+- Alt+Right.
+- Alt+Home.
+- Ctrl+F.
+- Ctrl+G.
+- Ctrl+Shift+G.
+- Escape.
+- Ctrl+P.
+- Ctrl+S.
+- Ctrl+O where appropriate.
+- Ctrl+U where supported.
+- Ctrl+D.
+
+## Tab and window shortcuts
+
+Implement and test:
+- Ctrl+T.
+- Ctrl+W.
+- Ctrl+Shift+T.
+- Ctrl+N.
+- Ctrl+Tab.
+- Ctrl+Shift+Tab.
+- Ctrl+1 through Ctrl+8.
+- Ctrl+9.
+- Ctrl+Shift+W.
+- Ctrl+Shift+N when actual private-window functionality is available.
+- Ctrl+Shift+PageUp and Ctrl+Shift+PageDown for tab movement where supported.
+
+## Browser-management shortcuts
+
+Implement and test:
+- Ctrl+H for history.
+- Ctrl+J for downloads.
+- Ctrl+Shift+O for bookmarks.
+- Ctrl+Shift+B for the bookmarks bar.
+- Ctrl+Shift+Delete for browsing-data clearing.
+- Ctrl+Plus and Ctrl+Minus for zoom.
+- Ctrl+0 for default zoom.
+- Ctrl+Shift+I for Developer Tools.
+- Ctrl+Shift+J for the Developer Tools console.
+- Ctrl+Shift+C for element inspection where supported.
+- Shift+Escape for a browser task manager only if a functional task manager is implemented.
+
+Use existing Electron and Chromium APIs where possible.
+
+For unimplemented capabilities, preserve safe defaults and document what remains unsupported.
+
+Acceptance criteria:
+- Shortcuts work in the intended window.
+- Shortcuts are not triggered repeatedly by duplicate listeners.
+- Shortcut handlers are cleaned up correctly.
+- Platform differences are respected.
+- Focus behavior is tested.
+- Browser controls do not unnecessarily intercept keystrokes intended for web pages or accessibility tools.
+
+---
+
+# PHASE 3 — TABS AND WINDOWS
+
+Implement a complete basic tab lifecycle.
+
+Required:
+- Create tabs.
+- Close tabs.
+- Switch tabs.
+- Navigate tabs independently.
+- Track each tab's URL, title, loading state, and favicon where available.
+- Track the active tab.
+- Maintain browser history independently for each tab.
+- Support foreground and background tabs.
+- Restore recently closed tabs where possible.
+- Prevent closing one tab from accidentally destroying the wrong WebContents.
+- Handle closing the last tab according to an explicit browser policy.
+- Handle popup requests.
+- Open new browser windows.
+- Clean up tab resources correctly.
+- Recover from renderer crashes.
+- Handle window closing and application shutdown.
+- Avoid duplicate or orphaned WebContents instances.
+
+Then prototype these features:
+- Tab reordering.
+- Pinned tabs.
+- Muting and audio indicators.
+- Dragging a tab into another window.
+- Moving tabs between windows.
+- Tab groups.
+- Session restoration.
+- Recently closed tabs.
+
+Keep tab metadata and browser-view lifecycle synchronized.
+
+Do not store only a tab's visible URL while losing the underlying browser state.
+
+Acceptance criteria:
+- Tabs navigate independently.
+- Switching does not corrupt tab state.
+- Closed tabs release their resources.
+- New windows obey security policies.
+- Session restoration handles missing or invalid URLs safely.
+- Automated tests exercise tab lifecycle transitions.
+
+---
+
+# PHASE 4 — BOOKMARKS AND HISTORY
+
+## Bookmarks
+
+Implement:
+- Add a bookmark.
+- Edit its title and URL.
+- Remove a bookmark.
+- Bookmark folders.
+- Move bookmarks between folders.
+- Search bookmarks.
+- Sort or organize bookmarks.
+- Bookmark-bar state.
+- Persistence across application restarts.
+- Import and export bookmarks in a documented format.
+
+Validate URLs and handle duplicate records sensibly.
+
+## History
+
+Implement:
+- Record eligible navigations.
+- Store URL, title, and visit timestamp.
+- Avoid recording failed or non-page navigations as successful visits.
+- Search history.
+- Filter history by date where practical.
+- Open previous entries.
+- Delete individual entries.
+- Clear selected history.
+- Clear all history.
+- Prevent unwanted normal-profile history writes from private sessions.
+- Handle history database errors.
+
+Respect redirect and navigation semantics. Avoid recording every intermediate request as a separate user visit.
+
+Deliverable:
+Functional persistent bookmarks and history with create, update, delete, query, and restart-persistence tests.
+
+---
+
+# PHASE 5 — DOWNLOAD MANAGER AND FILE HANDLING
+
+Implement a real download manager using Electron's supported download mechanisms.
+
+Support:
+- Start downloads from user-initiated links.
+- Track progress.
+- Track received and total bytes when available.
+- Display downloading, paused, completed, cancelled, and failed states where applicable.
+- Cancel downloads.
+- Pause and resume only when the underlying download mechanism supports it.
+- Retry eligible failed downloads.
+- Show the destination filename.
+- Use a configurable default download directory.
+- Support prompting for a destination path.
+- Prevent unsafe filename handling and path traversal.
+- Resolve filename collisions safely.
+- Reveal completed downloads in the operating-system file manager.
+- Open completed files through an explicit user action.
+- Track errors.
+- Persist useful download metadata.
+- Handle interrupted application shutdown.
+- Respect permissions and application security policy.
+
+Do not fabricate progress values.
+
+## Additional file handling
+
+Implement appropriate support for:
+- Open local files.
+- Handle file URLs safely.
+- Print the current webpage.
+- Save the current page when supported.
+- Save a PDF through a real supported print/save operation.
+- Display PDFs through Chromium or an appropriate supported PDF workflow.
+
+Document cases that Electron does not support directly.
+
+Acceptance criteria:
+A real file is downloaded, progress is based on actual download events, cancellation works, unsafe path input is rejected, and metadata survives restart when intended.
+
+---
+
+# PHASE 6 — BROWSING DATA AND SITE STORAGE
+
+Implement browser data controls.
+
+Support:
+- Clear browsing history.
+- Clear cookies.
+- Clear cached web content.
+- Clear local storage and applicable site storage.
+- Clear selected categories of data.
+- Clear data for a selected website where supported.
+- Show the scope of the operation before execution.
+- Report errors if some data cannot be cleared.
+- Prevent private session data from being mixed with regular browsing data.
+
+Understand the difference between:
+- History.
+- Cookies.
+- HTTP cache.
+- Local storage.
+- IndexedDB.
+- Service workers.
+- Session storage.
+- Cached application resources.
+
+Use Electron's session and storage APIs according to the installed Electron version.
+
+Do not implement a misleading "clear everything" operation that only deletes history records.
+
+Write tests proving that the requested categories are cleared.
+
+---
+
+# PHASE 7 — PRIVATE BROWSING AND PROFILES
+
+## Private browsing
+
+Implement a genuine private-browsing prototype.
+
+Requirements:
+- Separate in-memory or otherwise appropriately isolated session partition.
+- Do not share regular-profile cookies.
+- Do not record private navigation in ordinary browsing history.
+- Do not mix private session storage with the regular profile.
+- Clear temporary private data when the private context is closed, according to the selected design.
+- Handle downloads explicitly.
+- Indicate private context through existing browser controls or a minimal necessary indicator.
+- Prevent the private window from becoming the main browser's default persistent session.
+
+Using a new tab in the normal session is NOT private browsing.
+
+Use Electron's supported session partition behavior and verify the actual lifecycle.
+
+## Browser profiles
+
+Prototype separate browser profiles where feasible.
+
+Each profile should own its own appropriate:
+- Persistent browser session.
+- Cookies and site storage.
+- Browsing history.
+- Bookmarks, if the chosen architecture supports per-profile bookmarks.
+- Settings.
+- Session restoration data.
+- Permission preferences.
+
+Document unsupported profile-isolation details.
+
+Do not create a fake profile selector that changes a label but leaves every profile using the same session.
+
+Acceptance criteria:
+Tests confirm that one profile cannot read another profile's cookies and that private browsing does not persist ordinary browsing history.
+
+---
+
+# PHASE 8 — PRIVACY, SECURITY, AND PERMISSIONS
+
+Perform a dedicated security review.
+
+## Electron security
+
+Verify:
+- Context isolation is enabled for untrusted content.
+- Node.js integration is disabled for remote websites.
+- Appropriate sandboxing is enabled where compatible.
+- Navigation is restricted.
+- New-window creation is controlled.
+- IPC inputs are validated.
+- IPC sender identity and origin are checked as appropriate.
+- Preload APIs are narrow.
+- The browser does not expose arbitrary privileged APIs to websites.
+- Remote content cannot navigate into privileged application pages.
+- The app UI's Content Security Policy is appropriate.
+- No security setting is weakened for convenience.
+
+## Website permissions
+
+Implement an explicit permission policy for applicable features, including:
+- Camera.
+- Microphone.
+- Notifications.
+- Geolocation.
+- Clipboard access.
+- Screen capture.
+- Other supported sensitive permissions.
+
+Requirements:
+- Default-deny sensitive permissions unless a justified policy says otherwise.
+- Request permission at an appropriate time.
+- Record permitted decisions where appropriate.
+- Allow denial and revocation.
+- Support per-origin decisions where practical.
+- Do not grant permission to arbitrary origins silently.
+- Respect private-session and profile boundaries.
+
+## HTTPS and certificates
+
+Implement useful connection-security information.
+
+Handle:
+- HTTP versus HTTPS.
+- Valid secure connections.
+- Invalid certificates.
+- Certificate-related navigation failures.
+- Safe user-facing error explanations.
+
+Never silently bypass invalid certificates.
+
+## Dangerous navigation
+
+Handle external protocol URLs through an explicit allowlist or user confirmation strategy.
+
+Prevent arbitrary schemes from invoking operating-system handlers without policy checks.
+
+## Updates and dependencies
+
+Record the active Electron and Chromium versions.
+
+Provide a documented dependency-update process and identify vulnerabilities with appropriate project tooling where available.
+
+Do not claim that Eclipse is fully secure simply because individual configuration flags are enabled.
+
+Deliverable:
+Security audit, remediations, negative tests, and documented limitations.
+
+---
+
+# PHASE 9 — ZOOM, FIND, PRINTING, AND DEVELOPER TOOLS
+
+Implement:
+- Find text in the current page.
+- Next and previous search result.
+- Match count when available.
+- Close the find interface and clear its search state.
+- Per-tab zoom state where supported.
+- Increase zoom.
+- Decrease zoom.
+- Reset zoom.
+- Print the current page.
+- Save page output where supported.
+- Open Developer Tools for the correct tab.
+- Inspect the current page.
+- Handle DevTools close and reopen.
+- Avoid DevTools instances leaking after tab closure.
+
+Use supported Electron APIs.
+
+Document differences between browser behavior and Chromium Developer Tools behavior.
+
+Do not attempt to build a replacement JavaScript debugger.
+
+---
+
+# PHASE 10 — WEBSITE FEATURES AND CHROMIUM INTEGRATION
+
+Preserve and verify ordinary modern website functionality.
+
+Test:
+- HTML and CSS rendering.
+- JavaScript execution.
+- Form submissions.
+- File inputs.
+- Clipboard operations.
+- Cookies.
+- Local storage.
+- IndexedDB.
+- Service workers.
+- WebSockets.
+- Audio and video.
+- Full-screen website requests.
+- Website popups.
+- Redirects.
+- Authentication.
+- Media permissions.
+- Drag and drop.
+- Downloads.
+- PDFs.
+- Printing.
+- Page titles and favicons.
+- Keyboard interaction with websites.
+- Browser navigation and history.
+
+Do not rebuild browser engine capabilities that Chromium already supplies.
+
+If a feature depends on codecs, platform integrations, or Electron build configuration, verify support on the actual target platform and document any gaps.
+
+Deliverable:
+A reproducible website-functionality test suite using suitable test pages, local fixtures, or other reliable testing infrastructure.
+
+Avoid unnecessary dependence on unstable external websites during automated testing.
+
+---
+
+# PHASE 11 — SETTINGS AND PREFERENCES
+
+Implement persistent settings for:
+- Homepage.
+- Startup behavior.
+- Default search engine.
+- Default download location.
+- Restore previous session.
+- Bookmarks-bar visibility where applicable.
+- Default zoom.
+- Theme selection only where a functional setting already exists; do not redesign the UI.
+- Permission preferences.
+- Privacy settings.
+- Browser data-clearing preferences.
+
+Requirements:
+- Validate every setting.
+- Define defaults.
+- Version and migrate stored settings if needed.
+- Handle corrupt configuration.
+- Prevent arbitrary code or paths from being injected through settings.
+- Avoid storing secrets in ordinary preferences.
+- Verify values persist across restart.
+
+Deliverable:
+A typed settings service with tests for defaults, validation, migration, invalid input, persistence, and recovery.
+
+---
+
+# PHASE 12 — PASSWORD MANAGER AND AUTOFILL PROTOTYPE
+
+Implement a limited, safe prototype only after the core browser is stable.
+
+Potential functionality:
+- Save credentials only following an explicit user action.
+- List, search, edit, and delete saved credentials.
+- Offer autofill on matching origins.
+- Require user interaction before exposing saved secrets.
+- Respect HTTPS and origin matching.
+- Never expose credentials to unrelated websites.
+- Never store passwords in plaintext or source code.
+- Never store encryption keys alongside encrypted credential data without an appropriate platform protection strategy.
+- Avoid sending credentials through logs or telemetry.
+- Securely handle application shutdown and renderer boundaries.
+
+Investigate OS-backed secret storage or an established, suitable credential-storage library before implementation.
+
+If secure key management cannot be established in the current environment, implement the non-secret interface and a clearly marked storage abstraction without persisting real passwords insecurely.
+
+Do not pretend to provide a production-grade password manager after creating a basic form.
+
+Deliverable:
+A documented prototype, appropriate tests, and an explicit assessment of remaining security requirements.
+
+---
+
+# PHASE 13 — EXTENSIONS, IMPORT/EXPORT, AND BROWSER COMPATIBILITY
+
+Investigate whether the installed Electron/Chromium version supports the extension functionality required by the project.
+
+Possible prototype:
+- Extension inventory.
+- Install or load an unpacked extension only through a controlled workflow.
+- Enable and disable supported extensions.
+- Remove extensions.
+- Validate the extension source and manifest.
+- Handle extension errors.
+- Document unsupported extension APIs.
+- Test persistence when supported.
+
+Do not claim full Chrome Web Store compatibility unless actually achieved and verified.
+
+Never execute arbitrary extension code with unnecessary application privileges.
+
+## Import and export
+
+Implement appropriate support for:
+- Bookmark JSON or documented browser-compatible bookmark formats.
+- History export if useful.
+- Settings export and import.
+- Validated file parsing.
+- Versioned format migration.
+
+Validate imported content and avoid executing imported files.
+
+Deliverable:
+A demonstrably working import/export workflow and a clearly scoped extension prototype, or a documented blocker supported by an investigation.
+
+---
+
+# PHASE 14 — MEMORY OPTIMIZATION AND PERFORMANCE
+
+Memory performance is a first-class project goal.
+
+Do not make unsupported claims that Eclipse uses less RAM than Chrome or Edge.
+
+## Baseline benchmark
+
+Create a reproducible test procedure with:
+- Same operating system.
+- Same machine.
+- Same browser version during each comparison.
+- Fixed website set or controlled local pages.
+- Identical number of tabs.
+- Controlled page-load and idle intervals.
+- Defined measurement intervals.
+- Defined cache and session state.
+- Repeated runs where practical.
+
+Benchmark at least:
+1. Idle browser.
+2. One active tab.
+3. Five tabs.
+4. Ten tabs if the machine permits.
+5. Several loaded websites.
+6. Long idle session.
+7. Closing tabs and observing cleanup.
+8. Reopening a discarded tab where supported.
+
+Do not automatically open excessive tabs on a low-memory machine.
+
+## Record metrics
+
+Measure where available:
+- Electron main-process memory.
+- Renderer-process memory.
+- Browser utility/GPU process memory where available.
+- Aggregate browser process footprint.
+- System memory before and after tests.
+- CPU activity where practical.
+- Tab load and recovery time.
+- Browser responsiveness.
+
+Separate private working set, committed memory, and aggregate process memory when applicable. Do not misrepresent summed process measurements as equivalent to the operating system's total physical memory consumption.
+
+## Lifecycle and memory improvements
+
+Investigate:
+- Destroying closed WebContents.
+- Removing event listeners.
+- Cleaning subscriptions and timers.
+- Unnecessary background browser views.
+- Hidden pages that remain active.
+- Unbounded metadata caches.
+- Large retained page objects.
+- Repeated session or view construction.
+- Renderer crashes and orphaned processes.
+- Supported background-throttling controls.
+- Inactive-tab discard or sleeping.
+- Memory-pressure handling.
+- Correct restoration of discarded tabs.
+
+Use supported Electron and Chromium features. Confirm behavior in the project's bundled version before relying on an API.
+
+Do not:
+- Disable security features to save RAM.
+- Randomly disable hardware acceleration.
+- Apply unsupported Chromium command-line flags.
+- Add timers that discard tabs while the user is interacting with them.
+- Destroy a tab without preserving the expected browser state.
+- Trigger garbage collection as a substitute for fixing a leak.
+
+For every optimization:
+1. Measure the baseline.
+2. Make one change.
+3. Run correctness tests.
+4. Repeat the same benchmark.
+5. Compare results.
+6. Record regressions.
+7. Keep or revert the change based on evidence.
+
+Deliverable:
+A RAM benchmark report, one or more evidence-backed optimizations, and a repeatable regression-testing procedure.
+
+---
+
+# PHASE 15 — DIAGNOSTICS, STABILITY, AND RECOVERY
+
+Implement useful operational diagnostics.
+
+Support where appropriate:
+- Structured application logs.
+- Redaction of secrets and sensitive URLs where appropriate.
+- Startup failures.
+- Navigation failures.
+- Download failures.
+- Renderer crashes.
+- Unresponsive page handling.
+- Persistent-storage errors.
+- Session restoration errors.
+- Resource cleanup on tab closure.
+- Clean application shutdown.
+- Controlled recovery after unexpected exits.
+- A diagnostic summary for developers.
+- Browser version and Chromium version display.
+
+Do not store passwords, cookies, authorization headers, or other secrets in logs.
+
+Add bounded log rotation or another sensible storage limit.
+
+Avoid retry loops that repeatedly recreate a crashing renderer.
+
+Deliverable:
+Reproducible failure tests and documented recovery behavior.
+
+---
+
+# PHASE 16 — TASK MANAGER AND ADVANCED DIAGNOSTICS
+
+If feasible, implement a basic internal browser task-manager prototype.
+
+Expose only real available information, such as:
+- Tab identity.
+- Current URL with sensitive information handled carefully.
+- Loading or crashed status.
+- Memory measurements where supported.
+- CPU measurements where supported.
+- Renderer-process identity where appropriate.
+
+Allow a safe operation such as selecting a tab or closing an unresponsive tab.
+
+Do not fabricate per-tab memory values if Chromium only provides process-level metrics.
+
+Document when several tabs share a renderer process or when precise per-tab resource attribution is unavailable.
+
+---
+
+# PHASE 17 — RELEASE READINESS
+
+Once the preceding features are implemented to the extent supported:
+
+1. Run all tests.
+2. Run type checking.
+3. Run the production build.
+4. Launch the built application.
+5. Test the principal navigation workflows.
+6. Verify tab lifecycle.
+7. Verify downloads.
+8. Verify bookmarks and history persistence.
+9. Verify settings persistence.
+10. Verify private-session isolation.
+11. Verify key security restrictions.
+12. Re-run the RAM benchmark.
+13. Test application shutdown and restart.
+14. Inspect dependency and build failures.
+15. Review the Git diff for unrelated or dangerous changes.
+16. Verify the repository has no newly introduced secrets.
+17. Document unsupported features and known issues.
+18. Confirm all packaging and distribution steps actually work before reporting success.
+
+Deliverable:
+A release-readiness report, current feature matrix, known issues list, test results, and reproducible build instructions.
+
+---
+
+# 5. AUTOMATED TESTING REQUIREMENTS
+
+Use the existing test framework wherever possible.
+
+Add or extend tests for:
+- URL validation.
+- Search URL generation.
+- IPC argument validation.
+- IPC sender restrictions.
+- Tab creation and destruction.
+- Back and forward navigation.
+- Shortcut routing.
+- Navigation policy.
+- Popup policy.
+- Permission decisions.
+- Bookmarks CRUD.
+- History CRUD.
+- Settings validation and persistence.
+- Download lifecycle.
+- Private-session isolation.
+- Profile isolation.
+- Data clearing.
+- Malformed persistence data.
+- Session restoration.
+- Crash recovery where testable.
+- Memory-related lifecycle cleanup.
+
+Separate unit, integration, and end-to-end tests.
+
+Do not use a passing mock test as proof that the entire Electron workflow works. Add integration tests for important interactions with real Electron/Chromium components where practical.
+
+Use deterministic local test pages wherever possible.
+
+When a test fails:
+- Capture the actual failure.
+- Determine whether it is pre-existing or newly introduced.
+- Fix the underlying cause.
+- Re-run the targeted test.
+- Re-run the relevant suite.
+
+Never silently skip a failing test to make the suite green.
+
+---
+
+# 6. REQUIRED IMPLEMENTATION REPORT
+
+Maintain a document or repository artifact named `docs/IMPLEMENTATION_STATUS.md` if the project does not already have a suitable status document.
+
+Do not create unrelated documentation files.
+
+Update the status document as work progresses.
+
+It must contain:
+
+## Feature matrix
+For each feature:
+- Feature name.
+- Status.
+- Source files.
+- Actual verification performed.
+- Test results.
+- Known limitations.
+- Remaining work.
+
+## Progress summary
+- Features implemented this iteration.
+- Features already present before changes.
+- Files created, changed, and removed.
+- Dependencies changed and why.
+- Security improvements.
+- Memory/performance measurements.
+- Remaining failures.
+- Build result.
+- Test result.
+- Recommended next task.
+
+## Honest status rules
+Use one of:
+- Implemented and verified.
+- Implemented, but verification incomplete.
+- Partially implemented.
+- Not implemented.
+- Blocked by a documented limitation.
+
+Do not equate code generation with a completed feature.
+
+---
+
+# 7. LEARNING MODE
+
+The developer has approximately 3–5 hours per week and wants to learn while building the project.
+
+For each major implementation:
+- Explain what problem it solves.
+- Explain why the chosen Electron/Chromium API is appropriate.
+- Explain the data flow across main, preload, renderer, and browser content.
+- Explain important security tradeoffs.
+- Explain how the tests prove the behavior.
+- Explain relevant failure modes.
+- Keep explanations concise but technically useful.
+
+Prefer changes that are small enough to inspect and understand.
+
+Avoid unexplained architectural rewrites.
+
+If several tasks are possible, prioritize the smallest task with the highest reliability, security, or functionality benefit.
+
+Do not require the developer to understand the whole Chromium codebase to maintain this application.
+
+---
+
+# 8. ACCEPTANCE CRITERIA
+
+A feature is complete only when:
+- The code exists in the correct architectural layer.
+- The feature performs the intended operation.
+- Inputs are validated.
+- Error states are handled.
+- Security implications are considered.
+- Relevant automated tests exist and run.
+- Relevant type checks or builds pass.
+- No unacceptable regression is introduced.
+- Limitations are documented.
+- The feature matrix reflects actual evidence.
+
+A prototype does not need every advanced feature to match Chrome perfectly. However, it must be honest about compatibility, functionality, and limitations.
+
+If a feature cannot be safely implemented, document the blocker and create the safest useful prototype rather than implementing an insecure imitation.
+
+---
+
+# 9. EXECUTION INSTRUCTIONS
+
+Start now.
+
+Step 1: Inspect the current repository, Git status, architecture, scripts, and tests.
+
+Step 2: Establish the baseline and create the feature matrix.
+
+Step 3: Select the highest-priority incomplete feature from Phase 1 and proceed in dependency order.
+
+Step 4: Implement the feature completely enough to test, without redesigning the frontend.
+
+Step 5: Run focused tests, type checking, and relevant builds.
+
+Step 6: Inspect the changes for security issues, regressions, unrelated files, and unnecessary complexity.
+
+Step 7: Update `docs/IMPLEMENTATION_STATUS.md` with real results.
+
+Step 8: Continue with the next small, dependency-ready feature while the scope remains safe and testable.
+
+Do not stop after providing a theoretical plan. Begin making changes.
+
+Do not attempt to implement the entire browser in one enormous patch. Implement the complete feature inventory through controlled, testable milestones.
+
+When a milestone is complete, report the actual results and continue to the next milestone if the environment and task limits permit. Never leave a hanging test or background task without investigating it.
+
+## FINAL PRIORITY ORDER
+
+1. Correctness and application stability.
+2. Electron security.
+3. Navigation and tabs.
+4. Automated testing.
+5. Bookmarks, history, and downloads.
+6. Persistent settings and session recovery.
+7. Private browsing and site data management.
+8. RAM measurement and evidence-backed optimization.
+9. Website compatibility.
+10. Password manager, profiles, extensions, and advanced features.
+11. Release readiness.
+
+Keep the frontend redesign frozen throughout the entire implementation.
+
+Your objective is to deliver a real, maintainable, testable Eclipse Browser prototype—not a screenshot, a mockup, or a collection of nonfunctional controls.

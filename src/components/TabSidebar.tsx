@@ -22,6 +22,71 @@ interface TabSidebarProps {
   onOpenSettings?: () => void;
 }
 
+interface TabItemRowProps {
+  tab: TabItem;
+  isActive: boolean;
+  isCollapsed: boolean;
+  onSelectTab: (id: string) => void;
+  onCloseTab: (id: string) => void;
+}
+
+const TabItemRow = React.memo<TabItemRowProps>(({
+  tab,
+  isActive,
+  isCollapsed,
+  onSelectTab,
+  onCloseTab,
+}) => {
+  const displayTitle = tab.title || (tab.url && tab.url !== 'about:blank' ? tab.url : 'New Tab');
+  return (
+    <div
+      role="tab"
+      aria-selected={isActive}
+      className={`sidebar-tab-item ${isActive ? 'active' : ''}`}
+      onClick={() => onSelectTab(tab.id)}
+      title={displayTitle}
+    >
+      <div className="tab-status-icon">
+        {tab.isLoading ? (
+          <SpinnerIcon size={14} className="loading-spinner" />
+        ) : tab.favicon ? (
+          <img
+            src={tab.favicon}
+            alt=""
+            className="tab-favicon-img"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : (
+          <GlobeIcon size={14} className="tab-globe-icon" />
+        )}
+      </div>
+
+      {!isCollapsed && (
+        <>
+          <div className="tab-label-text">
+            {displayTitle}
+          </div>
+
+          <button
+            type="button"
+            className="tab-close-btn"
+            title="Close tab (Ctrl+W)"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCloseTab(tab.id);
+            }}
+          >
+            <CloseIcon size={12} />
+          </button>
+        </>
+      )}
+    </div>
+  );
+});
+TabItemRow.displayName = 'TabItemRow';
+
 export const TabSidebar: React.FC<TabSidebarProps> = ({
   tabs,
   activeTabId,
@@ -91,57 +156,16 @@ export const TabSidebar: React.FC<TabSidebarProps> = ({
 
       {/* Tab Management List */}
       <div className="sidebar-tabs-list" role="tablist" aria-label="Open tabs">
-        {tabs.map((tab) => {
-          const isActive = tab.id === activeTabId;
-          const displayTitle = tab.title || (tab.url && tab.url !== 'about:blank' ? tab.url : 'New Tab');
-          return (
-            <div
-              key={tab.id}
-              role="tab"
-              aria-selected={isActive}
-              className={`sidebar-tab-item ${isActive ? 'active' : ''}`}
-              onClick={() => onSelectTab(tab.id)}
-              title={displayTitle}
-            >
-              <div className="tab-status-icon">
-                {tab.isLoading ? (
-                  <SpinnerIcon size={14} className="loading-spinner" />
-                ) : tab.favicon ? (
-                  <img
-                    src={tab.favicon}
-                    alt=""
-                    className="tab-favicon-img"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <GlobeIcon size={14} className="tab-globe-icon" />
-                )}
-              </div>
-
-              {!isCollapsed && (
-                <>
-                  <div className="tab-label-text">
-                    {displayTitle}
-                  </div>
-
-                  <button
-                    type="button"
-                    className="tab-close-btn"
-                    title="Close tab (Ctrl+W)"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCloseTab(tab.id);
-                    }}
-                  >
-                    <CloseIcon size={12} />
-                  </button>
-                </>
-              )}
-            </div>
-          );
-        })}
+        {tabs.map((tab) => (
+          <TabItemRow
+            key={tab.id}
+            tab={tab}
+            isActive={tab.id === activeTabId}
+            isCollapsed={isCollapsed}
+            onSelectTab={onSelectTab}
+            onCloseTab={onCloseTab}
+          />
+        ))}
       </div>
 
       {/* Sidebar Footer with Settings */}

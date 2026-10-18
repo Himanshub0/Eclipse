@@ -116,6 +116,7 @@ export class BrowserViewManager {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: true,
+        backgroundThrottling: true,
       },
     });
 
@@ -175,6 +176,15 @@ export class BrowserViewManager {
 
     try {
       this.win.contentView.removeChildView(entry.view);
+    } catch {
+      // ignore
+    }
+
+    try {
+      entry.view.webContents.removeAllListeners();
+      if (!entry.view.webContents.isDestroyed()) {
+        entry.view.webContents.close();
+      }
     } catch {
       // ignore
     }
@@ -980,5 +990,25 @@ export class BrowserViewManager {
     if (this.delegate) {
       this.delegate.onOpenTaskManager();
     }
+  }
+
+  public destroy(): void {
+    for (const [, entry] of this.tabs) {
+      try {
+        this.win.contentView.removeChildView(entry.view);
+      } catch {
+        // ignore
+      }
+      try {
+        entry.view.webContents.removeAllListeners();
+        if (!entry.view.webContents.isDestroyed()) {
+          entry.view.webContents.close();
+        }
+      } catch {
+        // ignore
+      }
+    }
+    this.tabs.clear();
+    this.tabOrder = [];
   }
 }

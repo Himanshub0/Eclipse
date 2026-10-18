@@ -1,10 +1,12 @@
 import { app, BrowserWindow, ipcMain, Menu, session, dialog } from 'electron';
 import path from 'path';
+import { performance } from 'perf_hooks';
 import { BrowserViewManager, WindowDelegate } from './browser-view';
 import { SettingsStore } from './settings-store';
 import { BookmarksStore } from './bookmarks-store';
 import { HistoryStore } from './history-store';
 import { DownloadsManager } from './downloads-manager';
+import { runPerformanceBenchmark } from './benchmark';
 import {
   IPC_CHANNELS,
   validateUrlPayload,
@@ -16,6 +18,13 @@ import {
   validateMoveTabDirection,
 } from './ipc';
 import type { RuntimeVersions } from '../src/types/settings';
+
+const processStartTime = performance.now();
+
+// Chromium performance & hardware acceleration switches
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('enable-background-timer-throttling');
 
 let mainWindow: BrowserWindow | null = null;
 let browserViewManager: BrowserViewManager | null = null;
@@ -132,6 +141,7 @@ function createAppWindow(initialUrl?: string, isPrivate = false): BrowserWindow 
   });
 
   win.on('closed', () => {
+    manager.destroy();
     windowManagers.delete(win.id);
     if (mainWindow === win) {
       const remaining = BrowserWindow.getAllWindows();
@@ -444,11 +454,22 @@ function registerIpcHandlers(): void {
 }
 
 async function initializeApp(): Promise<void> {
+  const readyTime = performance.now();
   Menu.setApplicationMenu(null);
   registerIpcHandlers();
 
   downloadsManager.initialize();
   createAppWindow();
+
+  if (process.env.BENCHMARK === '1') {
+    if (mainWindow && browserViewManager) {
+      mainWindow.webContents.once('did-finish-load', () => {
+        const firstPageTime = performance.now();
+        void runPerformanceBenchmark(processStartTime, readyTime, firstPageTime, browserViewManager!, mainWindow!);
+      });
+    }
+    return;
+  }
 
   if (process.env.SMOKE_TEST === '1') {
     console.log('[SMOKE_TEST] Window and WebContentsView initialized successfully.');
