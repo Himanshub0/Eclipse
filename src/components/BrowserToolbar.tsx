@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { BackIcon, ForwardIcon, ReloadIcon, HomeIcon, SpinnerIcon } from './Icons';
+import { BackIcon, ForwardIcon, ReloadIcon, StopIcon, HomeIcon } from './Icons';
 import { AddressBar, AddressBarRef } from './AddressBar';
 
 interface BrowserToolbarProps {
@@ -11,6 +11,7 @@ interface BrowserToolbarProps {
   onGoBack: () => void;
   onGoForward: () => void;
   onReload: () => void;
+  onStopLoading?: () => void;
   onHome: () => void;
   onReportHeight: (height: number) => void;
   addressBarRef: React.RefObject<AddressBarRef | null>;
@@ -25,6 +26,7 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
   onGoBack,
   onGoForward,
   onReload,
+  onStopLoading,
   onHome,
   onReportHeight,
   addressBarRef,
@@ -79,11 +81,11 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
           <button
             type="button"
             className="toolbar-btn"
-            title={isLoading ? 'Loading page...' : 'Reload this page (Ctrl+R, F5)'}
-            onClick={onReload}
+            title={isLoading ? 'Stop loading (Escape)' : 'Reload this page (Ctrl+R, F5)'}
+            onClick={isLoading ? onStopLoading : onReload}
           >
             {isLoading ? (
-              <SpinnerIcon size={16} className="loading-spinner" />
+              <StopIcon size={16} />
             ) : (
               <ReloadIcon size={16} />
             )}

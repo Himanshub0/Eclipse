@@ -2,6 +2,7 @@ import { BrowserWindow, WebContentsView } from 'electron';
 import type { BrowserAppState, TabItem } from '../src/types/browser';
 import { normalizeUrl } from '../src/utils/url';
 import { IPC_CHANNELS } from './ipc';
+import type { SettingsStore } from './settings-store';
 
 interface TabEntry {
   id: string;
@@ -16,20 +17,33 @@ const DEFAULT_HOMEPAGE = 'https://duckduckgo.com';
  */
 export class BrowserViewManager {
   private win: BrowserWindow;
+  private settingsStore: SettingsStore;
   private tabs: Map<string, TabEntry> = new Map();
   private tabOrder: string[] = [];
   private activeTabId: string = '';
   private sidebarWidth: number = 240;
-  private topBarHeight: number = 48;
+  private topBarHeight: number = 44;
   private nextTabNumber: number = 1;
+  private isSettingsOpen: boolean = false;
 
-  constructor(win: BrowserWindow, initialSidebarWidth = 240, initialTopBarHeight = 48) {
+  constructor(
+    win: BrowserWindow,
+    settingsStore: SettingsStore,
+    initialSidebarWidth = 240,
+    initialTopBarHeight = 44
+  ) {
     this.win = win;
+    this.settingsStore = settingsStore;
     this.sidebarWidth = initialSidebarWidth;
     this.topBarHeight = initialTopBarHeight;
 
+    const startupUrl =
+      this.settingsStore.getSettings().startupMode === 'homepage'
+        ? this.settingsStore.getSettings().homepage || DEFAULT_HOMEPAGE
+        : 'about:blank';
+
     // Create initial tab
-    this.createTab(DEFAULT_HOMEPAGE);
+    this.createTab(startupUrl);
 
     // Synchronize bounds on window resize
     this.win.on('resize', () => {
@@ -44,15 +58,26 @@ export class BrowserViewManager {
     const availableHeight = Math.max(0, height - this.topBarHeight);
 
     const active = this.tabs.get(this.activeTabId);
-    if (active) {
-      active.view.setBounds({
-        x: this.sidebarWidth,
-        y: this.topBarHeight,
-        width: availableWidth,
-        height: availableHeight,
-      });
-      active.view.setVisible(true);
+    if (!active) return;
+
+    if (this.isSettingsOpen) {
+      // Hide external website while settings overlay is active
+      active.view.setVisible(false);
+      return;
     }
+
+    active.view.setBounds({
+      x: this.sidebarWidth,
+      y: this.topBarHeight,
+      width: availableWidth,
+      height: availableHeight,
+    });
+    active.view.setVisible(true);
+  }
+
+  public setSettingsOpen(open: boolean): void {
+    this.isSettingsOpen = open;
+    this.updateBounds();
   }
 
   public setLayoutBounds(sidebarWidth: number, topBarHeight: number): void {
@@ -98,7 +123,7 @@ export class BrowserViewManager {
     this.activeTabId = tabId;
 
     for (const [id, entry] of this.tabs) {
-      if (id === tabId) {
+      if (id === tabId && !this.isSettingsOpen) {
         entry.view.setVisible(true);
       } else {
         entry.view.setVisible(false);
@@ -125,13 +150,12 @@ export class BrowserViewManager {
       this.tabOrder.splice(index, 1);
     }
 
-    // If closing active tab, activate adjacent tab
     if (this.activeTabId === tabId) {
       if (this.tabOrder.length > 0) {
         const nextIndex = Math.min(index, this.tabOrder.length - 1);
         this.switchTab(this.tabOrder[nextIndex]);
       } else {
-        this.createTab(DEFAULT_HOMEPAGE);
+        this.createTab(this.settingsStore.getSettings().homepage || DEFAULT_HOMEPAGE);
       }
     } else {
       this.emitState();
@@ -143,7 +167,6 @@ export class BrowserViewManager {
 
     wc.setWindowOpenHandler(({ url }) => {
       if (/^https?:\/\//i.test(url)) {
-        // Create new tab for external link target="_blank"
         this.createTab(url);
       }
       return { action: 'deny' };
@@ -236,7 +259,8 @@ export class BrowserViewManager {
   }
 
   private async navigateTab(entry: TabEntry, rawUrl: string): Promise<boolean> {
-    const normalized = normalizeUrl(rawUrl);
+    const template = this.settingsStore.getSearchTemplate();
+    const normalized = normalizeUrl(rawUrl, template);
     try {
       entry.lastError = null;
       await entry.view.webContents.loadURL(normalized);
@@ -278,6 +302,13 @@ export class BrowserViewManager {
     const active = this.tabs.get(this.activeTabId);
     if (!active) return false;
     active.view.webContents.reload();
+    return true;
+  }
+
+  public stopLoading(): boolean {
+    const active = this.tabs.get(this.activeTabId);
+    if (!active) return false;
+    active.view.webContents.stop();
     return true;
   }
 }

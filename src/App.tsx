@@ -3,9 +3,11 @@ import { useNavigation } from './hooks/useNavigation';
 import { TabSidebar } from './components/TabSidebar';
 import { BrowserToolbar } from './components/BrowserToolbar';
 import { AddressBarRef } from './components/AddressBar';
+import { SettingsModal } from './components/SettingsModal';
+import { DEFAULT_SETTINGS, type EclipseSettings } from './types/settings';
 import './styles/toolbar.css';
 
-const HOMEPAGE_URL = 'https://duckduckgo.com';
+const FALLBACK_HOMEPAGE = 'https://duckduckgo.com';
 
 export const App: React.FC = () => {
   const {
@@ -16,18 +18,63 @@ export const App: React.FC = () => {
     goBack,
     goForward,
     reload,
+    stopLoading,
     createTab,
     closeTab,
     switchTab,
     setLayoutBounds,
   } = useNavigation();
 
+  const [settings, setSettings] = useState<EclipseSettings>(DEFAULT_SETTINGS);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [dismissedError, setDismissedError] = useState<string | null>(null);
-  const addressBarRef = useRef<AddressBarRef>(null);
 
+  const addressBarRef = useRef<AddressBarRef>(null);
   const sidebarWidthRef = useRef<number>(240);
   const topBarHeightRef = useRef<number>(48);
 
+  // Sync settings from main process
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.browserApi) {
+      void window.browserApi.getSettings().then((s) => {
+        if (s) setSettings(s);
+      });
+
+      const unsub = window.browserApi.onSettingsChange((s) => {
+        setSettings(s);
+      });
+
+      return () => {
+        unsub();
+      };
+    }
+  }, []);
+
+  // Sync Theme Mode and Accent Color to document root
+  useEffect(() => {
+    const applyThemeAndAccent = () => {
+      let resolvedTheme = settings.theme;
+      if (resolvedTheme === 'system') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        resolvedTheme = prefersDark ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', resolvedTheme);
+      document.documentElement.setAttribute('data-accent', settings.accentColor);
+    };
+
+    applyThemeAndAccent();
+
+    if (settings.theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = () => applyThemeAndAccent();
+      mediaQuery.addEventListener('change', handleChange);
+      return () => {
+        mediaQuery.removeEventListener('change', handleChange);
+      };
+    }
+  }, [settings.theme, settings.accentColor]);
+
+  // Synchronize layout bounds to main process
   const syncLayout = useCallback(() => {
     void setLayoutBounds({
       sidebarWidth: sidebarWidthRef.current,
@@ -45,9 +92,47 @@ export const App: React.FC = () => {
     syncLayout();
   }, [syncLayout]);
 
+  // Manage Settings Open state and hide/show WebContentsView
+  const handleToggleSettings = useCallback((open: boolean) => {
+    setIsSettingsOpen(open);
+    if (window.browserApi) {
+      void window.browserApi.setSettingsOpen(open);
+    }
+  }, []);
+
+  const handleUpdateSettings = useCallback(async (partial: Partial<EclipseSettings>) => {
+    if (window.browserApi) {
+      const updated = await window.browserApi.updateSettings(partial);
+      setSettings(updated);
+    } else {
+      setSettings((prev) => ({ ...prev, ...partial }));
+    }
+  }, []);
+
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+, -> Toggle Settings Center
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault();
+        handleToggleSettings(!isSettingsOpen);
+        return;
+      }
+
+      // Escape -> Close Settings Center or Stop Loading
+      if (e.key === 'Escape') {
+        if (isSettingsOpen) {
+          e.preventDefault();
+          handleToggleSettings(false);
+          return;
+        }
+        if (activeTab.isLoading) {
+          e.preventDefault();
+          void stopLoading();
+          return;
+        }
+      }
+
       // Ctrl+T -> New Tab
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 't') {
         e.preventDefault();
@@ -101,9 +186,21 @@ export const App: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeTabId, activeTab, createTab, closeTab, goBack, goForward, reload]);
+  }, [
+    isSettingsOpen,
+    activeTabId,
+    activeTab,
+    createTab,
+    closeTab,
+    goBack,
+    goForward,
+    reload,
+    stopLoading,
+    handleToggleSettings,
+  ]);
 
   const activeError = activeTab.error && activeTab.error !== dismissedError ? activeTab.error : null;
+  const configuredHomepage = settings.homepage?.trim() || FALLBACK_HOMEPAGE;
 
   return (
     <div className="browser-app-container">
@@ -115,6 +212,7 @@ export const App: React.FC = () => {
         onCloseTab={(tabId) => void closeTab(tabId)}
         onCreateTab={() => void createTab()}
         onReportWidth={handleReportSidebarWidth}
+        onOpenSettings={() => handleToggleSettings(true)}
       />
 
       {/* Main Content Area */}
@@ -131,9 +229,10 @@ export const App: React.FC = () => {
           onGoBack={() => void goBack()}
           onGoForward={() => void goForward()}
           onReload={() => void reload()}
+          onStopLoading={() => void stopLoading()}
           onHome={() => {
             setDismissedError(null);
-            void navigate(HOMEPAGE_URL);
+            void navigate(configuredHomepage);
           }}
           onReportHeight={handleReportTopBarHeight}
           addressBarRef={addressBarRef}
@@ -153,6 +252,14 @@ export const App: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Settings Center Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => handleToggleSettings(false)}
+        settings={settings}
+        onUpdateSettings={handleUpdateSettings}
+      />
     </div>
   );
 };

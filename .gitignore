@@ -10,6 +10,7 @@ dist-electron/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.tmp
 
 # Environment
 .env
@@ -18,3 +19,9 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Agentic & tooling artifacts
+.agents/
+.gravitas/
+.planning/
+skills-lock.json

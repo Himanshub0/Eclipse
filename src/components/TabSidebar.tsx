@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import type { TabItem } from '../types/browser';
-import { EclipseLogo, PlusIcon, CloseIcon, SpinnerIcon } from './Icons';
+import { EclipseLogo, PlusIcon, CloseIcon, SpinnerIcon, SettingsIcon } from './Icons';
 
 interface TabSidebarProps {
   tabs: TabItem[];
@@ -9,6 +9,7 @@ interface TabSidebarProps {
   onCloseTab: (tabId: string) => void;
   onCreateTab: () => void;
   onReportWidth: (width: number) => void;
+  onOpenSettings?: () => void;
 }
 
 export const TabSidebar: React.FC<TabSidebarProps> = ({
@@ -18,6 +19,7 @@ export const TabSidebar: React.FC<TabSidebarProps> = ({
   onCloseTab,
   onCreateTab,
   onReportWidth,
+  onOpenSettings,
 }) => {
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -104,6 +106,19 @@ export const TabSidebar: React.FC<TabSidebarProps> = ({
             </div>
           );
         })}
+      </div>
+
+      {/* Sidebar Footer with Settings */}
+      <div className="sidebar-footer">
+        <button
+          type="button"
+          className="sidebar-settings-btn"
+          onClick={onOpenSettings}
+          title="Settings (Ctrl+,)"
+        >
+          <SettingsIcon size={16} />
+          <span>Settings</span>
+        </button>
       </div>
     </aside>
   );

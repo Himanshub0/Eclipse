@@ -5,6 +5,8 @@ import {
   validateUrlPayload,
   validateTabIdPayload,
   validateLayoutBoundsPayload,
+  validateSettingsPayload,
+  validateClearDataPayload,
   IPC_CHANNELS,
 } from '../electron/ipc.ts';
 
@@ -41,5 +43,32 @@ test('IPC Validator test suite', async (t) => {
 
     assert.throws(() => validateLayoutBoundsPayload(null), TypeError);
     assert.throws(() => validateLayoutBoundsPayload({ sidebarWidth: -5, topBarHeight: 40 }), RangeError);
+  });
+
+  await t.test('validates settings payload', () => {
+    const validated = validateSettingsPayload({
+      theme: 'light',
+      accentColor: 'badge-green',
+      searchProvider: 'google',
+      homepage: '  https://news.ycombinator.com  ',
+      invalidKey: 'malicious',
+      startupMode: 'newtab',
+    });
+    assert.equal(validated.theme, 'light');
+    assert.equal(validated.accentColor, 'badge-green');
+    assert.equal(validated.searchProvider, 'google');
+    assert.equal(validated.homepage, 'https://news.ycombinator.com');
+    assert.equal(validated.startupMode, 'newtab');
+    assert.equal(Object.prototype.hasOwnProperty.call(validated, 'invalidKey'), false);
+
+    assert.throws(() => validateSettingsPayload(null), TypeError);
+    assert.throws(() => validateSettingsPayload('not an object'), TypeError);
+  });
+
+  await t.test('validates clear data payload', () => {
+    const valid = validateClearDataPayload({ cache: true, cookies: false, storage: true });
+    assert.deepEqual(valid, { cache: true, cookies: false, storage: true });
+
+    assert.throws(() => validateClearDataPayload(null), TypeError);
   });
 });

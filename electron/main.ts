@@ -1,15 +1,22 @@
-import { app, BrowserWindow, ipcMain, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, session } from 'electron';
 import path from 'path';
 import { BrowserViewManager } from './browser-view';
+import { SettingsStore } from './settings-store';
+import { DownloadsManager } from './downloads-manager';
 import {
   IPC_CHANNELS,
   validateUrlPayload,
   validateTabIdPayload,
   validateLayoutBoundsPayload,
+  validateSettingsPayload,
+  validateClearDataPayload,
 } from './ipc';
+import type { RuntimeVersions } from '../src/types/settings';
 
 let mainWindow: BrowserWindow | null = null;
 let browserViewManager: BrowserViewManager | null = null;
+const settingsStore = new SettingsStore();
+const downloadsManager = new DownloadsManager();
 
 function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -53,6 +60,7 @@ function createMainWindow(): BrowserWindow {
 }
 
 function registerIpcHandlers(): void {
+  // Navigation & Tabs
   ipcMain.handle(IPC_CHANNELS.NAVIGATE, async (_event, rawUrl: unknown) => {
     if (!browserViewManager) return false;
     const validated = validateUrlPayload(rawUrl);
@@ -72,6 +80,11 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.RELOAD, async () => {
     if (!browserViewManager) return false;
     return browserViewManager.reload();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.STOP_LOADING, async () => {
+    if (!browserViewManager) return false;
+    return browserViewManager.stopLoading();
   });
 
   ipcMain.handle(IPC_CHANNELS.CREATE_TAB, async (_event, rawUrl?: unknown) => {
@@ -104,6 +117,76 @@ function registerIpcHandlers(): void {
     const { sidebarWidth, topBarHeight } = validateLayoutBoundsPayload(rawLayout);
     browserViewManager.setLayoutBounds(sidebarWidth, topBarHeight);
   });
+
+  ipcMain.handle(IPC_CHANNELS.SET_SETTINGS_OPEN, async (_event, rawOpen: unknown) => {
+    if (!browserViewManager) return;
+    browserViewManager.setSettingsOpen(Boolean(rawOpen));
+  });
+
+  // Settings
+  ipcMain.handle(IPC_CHANNELS.GET_SETTINGS, async () => {
+    return settingsStore.getSettings();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.UPDATE_SETTINGS, async (_event, rawSettings: unknown) => {
+    const updated = settingsStore.updateSettings(validateSettingsPayload(rawSettings));
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(IPC_CHANNELS.SETTINGS_CHANGED, updated);
+    }
+    return updated;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GET_RUNTIME_VERSIONS, async (): Promise<RuntimeVersions> => {
+    return {
+      eclipse: '0.1.0',
+      electron: process.versions.electron || '34.5.8',
+      chrome: process.versions.chrome || '134.0.6998.35',
+      node: process.versions.node || '22.0.0',
+      platform: process.platform,
+    };
+  });
+
+  // Privacy
+  ipcMain.handle(IPC_CHANNELS.CLEAR_BROWSING_DATA, async (_event, rawOptions: unknown) => {
+    const opts = validateClearDataPayload(rawOptions);
+    try {
+      if (opts.cache) {
+        await session.defaultSession.clearCache();
+      }
+      if (opts.cookies || opts.storage) {
+        const storages: ('cookies' | 'localstorage' | 'indexdb' | 'websql' | 'serviceworkers' | 'cachestorage')[] = [];
+        if (opts.cookies) storages.push('cookies');
+        if (opts.storage) {
+          storages.push('localstorage', 'indexdb', 'websql', 'serviceworkers', 'cachestorage');
+        }
+        await session.defaultSession.clearStorageData({ storages });
+      }
+      return true;
+    } catch (err) {
+      console.error('[Privacy] Failed to clear browsing data:', err);
+      return false;
+    }
+  });
+
+  // Downloads
+  ipcMain.handle(IPC_CHANNELS.GET_DOWNLOADS, async () => {
+    return downloadsManager.getDownloads();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.OPEN_DOWNLOAD, async (_event, rawId: unknown) => {
+    const id = validateTabIdPayload(rawId);
+    return downloadsManager.openDownload(id);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SHOW_DOWNLOAD_IN_FOLDER, async (_event, rawId: unknown) => {
+    const id = validateTabIdPayload(rawId);
+    return downloadsManager.showInFolder(id);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CANCEL_DOWNLOAD, async (_event, rawId: unknown) => {
+    const id = validateTabIdPayload(rawId);
+    return downloadsManager.cancelDownload(id);
+  });
 }
 
 async function initializeApp(): Promise<void> {
@@ -111,7 +194,9 @@ async function initializeApp(): Promise<void> {
   registerIpcHandlers();
 
   mainWindow = createMainWindow();
-  browserViewManager = new BrowserViewManager(mainWindow, 240, 48);
+  downloadsManager.initialize();
+  downloadsManager.setWindow(mainWindow);
+  browserViewManager = new BrowserViewManager(mainWindow, settingsStore, 240, 44);
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
   if (devServerUrl) {
@@ -128,8 +213,8 @@ async function initializeApp(): Promise<void> {
     console.log('[SMOKE_TEST] Window and WebContentsView initialized successfully.');
     setTimeout(() => {
       console.log('[SMOKE_TEST] Exiting smoke test cleanly.');
-      app.quit();
-    }, 2500);
+      app.exit(0);
+    }, 1000);
   }
 
   mainWindow.on('closed', () => {

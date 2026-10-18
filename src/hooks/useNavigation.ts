@@ -62,6 +62,11 @@ export function useNavigation() {
     return false;
   }, []);
 
+  const stopLoading = useCallback(async () => {
+    if (window.browserApi) return window.browserApi.stopLoading();
+    return false;
+  }, []);
+
   const createTab = useCallback(async (url?: string) => {
     if (window.browserApi) return window.browserApi.createTab(url);
     return '';
@@ -87,6 +92,7 @@ export function useNavigation() {
     goBack,
     goForward,
     reload,
+    stopLoading,
     createTab,
     closeTab,
     switchTab,

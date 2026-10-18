@@ -33,8 +33,22 @@ test('Electron runtime smoke test', async (t) => {
       stderr += chunk.toString();
     });
 
-    const exitCode = await new Promise((resolve) => {
-      child.on('close', resolve);
+    const exitCode = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        try {
+          child.kill('SIGKILL');
+        } catch {}
+        reject(new Error('Smoke test timed out after 8000ms'));
+      }, 8000);
+
+      child.on('close', (code) => {
+        clearTimeout(timer);
+        resolve(code);
+      });
+      child.on('error', (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
     });
 
     console.log('Smoke test stdout:', stdout);
