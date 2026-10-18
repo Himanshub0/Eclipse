@@ -18,12 +18,12 @@ function createMainWindow(): BrowserWindow {
     minWidth: 800,
     minHeight: 600,
     title: 'Eclipse',
-    backgroundColor: '#18181b',
+    backgroundColor: '#101312',
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#18181b',
-      symbolColor: '#f4f4f5',
-      height: 38,
+      color: '#101312',
+      symbolColor: '#E2E6E2',
+      height: 44,
     },
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),

@@ -1,22 +1,55 @@
-/* Eclipse Browser - Modern Charcoal Dark Theme with Vertical Tab Management */
+/* ==========================================================================
+   ECLIPSE BROWSER — GOTHIC OBSIDIAN DESIGN SYSTEM
+   Palette:
+     - Obsidian Black: #101312
+     - Ash Grey:       #202522
+     - Arsenic Grey:   #777F79
+     - Arsenic Green:  #3F8F68
+     - Badge Green:    #8DC9A6
+     - Bone White:     #E2E6E2
+   ========================================================================== */
 
 :root {
-  --bg-app: #18181b;
-  --bg-sidebar: #121214;
-  --bg-toolbar: #202023;
-  --bg-input: #151517;
-  --bg-input-focus: #0c0c0e;
-  --bg-btn-hover: #2e2e33;
-  --bg-btn-active: #3f3f46;
-  --border-subtle: #2e2e33;
-  --border-focus: #3b82f6;
-  --text-main: #f4f4f5;
-  --text-muted: #a1a1aa;
-  --text-disabled: #52525b;
-  --accent-blue: #3b82f6;
-  --accent-green: #10b981;
-  --accent-red: #ef4444;
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Core Primitive Tokens */
+  --color-obsidian: #101312;
+  --color-ash: #202522;
+  --color-ash-elevated: #282f2b;
+  --color-ash-subtle: #161a18;
+  --color-arsenic: #777F79;
+  --color-arsenic-light: #9da6a0;
+  --color-green-primary: #3F8F68;
+  --color-green-badge: #8DC9A6;
+  --color-bone: #E2E6E2;
+  --color-bone-dim: #c7cec8;
+  --color-crimson: #cf4f4f;
+
+  /* Semantic Theme System */
+  --bg-app: var(--color-obsidian);
+  --bg-sidebar: var(--color-obsidian);
+  --bg-topbar: var(--color-ash);
+  --bg-input: var(--color-ash-subtle);
+  --bg-input-focus: #0d100f;
+  --bg-btn-hover: var(--color-ash-elevated);
+  --bg-btn-active: #333c37;
+
+  --border-subtle: rgba(119, 127, 121, 0.22);
+  --border-medium: rgba(119, 127, 121, 0.4);
+  --border-focus: var(--color-green-primary);
+
+  --text-primary: var(--color-bone);
+  --text-secondary: var(--color-arsenic-light);
+  --text-muted: var(--color-arsenic);
+  --text-disabled: rgba(119, 127, 121, 0.45);
+
+  --accent-primary: var(--color-green-primary);
+  --accent-badge: var(--color-green-badge);
+  --accent-glow: rgba(63, 143, 104, 0.32);
+
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-pill: 20px;
+  --transition-smooth: 0.14s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 * {
@@ -29,10 +62,11 @@ html, body, #root {
   width: 100%;
   height: 100%;
   background-color: var(--bg-app);
-  color: var(--text-main);
+  color: var(--text-primary);
   font-family: var(--font-family);
   overflow: hidden;
   user-select: none;
+  -webkit-font-smoothing: antialiased;
 }
 
 .browser-app-container {
@@ -62,11 +96,12 @@ html, body, #root {
 
 /* Brand Header */
 .sidebar-brand-header {
-  height: 48px;
+  height: 44px;
   display: flex;
   align-items: center;
   padding: 0 16px;
   border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--color-obsidian);
   -webkit-app-region: drag;
 }
 
@@ -78,14 +113,16 @@ html, body, #root {
 }
 
 .brand-icon {
-  color: var(--accent-blue);
+  color: var(--accent-badge);
+  filter: drop-shadow(0 0 6px rgba(141, 201, 166, 0.35));
 }
 
 .brand-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.5px;
-  color: var(--text-main);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-bone);
 }
 
 /* Action: New Tab Button */
@@ -95,24 +132,31 @@ html, body, #root {
 
 .new-tab-btn {
   width: 100%;
-  height: 36px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border-radius: 8px;
-  background-color: var(--bg-btn-hover);
+  border-radius: var(--radius-md);
+  background-color: var(--color-ash);
   border: 1px solid var(--border-subtle);
-  color: var(--text-main);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--transition-smooth);
 }
 
 .new-tab-btn:hover {
+  background-color: var(--color-ash-elevated);
+  border-color: rgba(63, 143, 104, 0.45);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.new-tab-btn:active {
   background-color: var(--bg-btn-active);
-  border-color: var(--border-focus);
+  transform: translateY(1px);
 }
 
 /* Tabs List */
@@ -122,34 +166,35 @@ html, body, #root {
   padding: 6px 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .sidebar-tab-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 13px;
-  transition: all 0.15s ease;
+  transition: all var(--transition-smooth);
   position: relative;
   border: 1px solid transparent;
 }
 
 .sidebar-tab-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-main);
+  background-color: rgba(32, 37, 34, 0.55);
+  color: var(--color-bone);
 }
 
 .sidebar-tab-item.active {
-  background-color: var(--bg-toolbar);
-  color: var(--text-main);
+  background-color: var(--color-ash);
+  color: var(--color-bone);
   font-weight: 500;
   border-color: var(--border-subtle);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  border-left: 3px solid var(--accent-primary);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
 }
 
 .tab-status-icon {
@@ -160,6 +205,11 @@ html, body, #root {
   height: 16px;
   font-size: 13px;
   flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.sidebar-tab-item.active .tab-status-icon {
+  color: var(--accent-badge);
 }
 
 .tab-label-text {
@@ -167,6 +217,7 @@ html, body, #root {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: 0.01em;
 }
 
 .tab-close-btn {
@@ -177,20 +228,21 @@ html, body, #root {
   height: 20px;
   background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s ease, background-color 0.15s ease;
+  transition: opacity var(--transition-smooth), background-color var(--transition-smooth), color var(--transition-smooth);
 }
 
 .sidebar-tab-item:hover .tab-close-btn {
-  opacity: 1;
+  opacity: 0.75;
 }
 
 .tab-close-btn:hover {
-  background-color: rgba(239, 68, 68, 0.2);
-  color: var(--accent-red);
+  opacity: 1 !important;
+  background-color: rgba(207, 79, 79, 0.2);
+  color: #ff8080;
 }
 
 /* ==========================================================================
@@ -204,16 +256,17 @@ html, body, #root {
   height: 100%;
   position: relative;
   overflow: hidden;
+  background-color: var(--bg-app);
 }
 
 .eclipse-top-bar {
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-toolbar);
+  background-color: var(--bg-topbar);
   border-bottom: 1px solid var(--border-subtle);
   position: relative;
   z-index: 10;
-  height: 48px;
+  height: 44px;
   padding-right: 140px; /* Leave space for native Windows caption controls */
   -webkit-app-region: drag;
 }
@@ -222,8 +275,8 @@ html, body, #root {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
-  height: 48px;
+  padding: 5px 12px;
+  height: 44px;
   -webkit-app-region: no-drag;
 }
 
@@ -231,7 +284,7 @@ html, body, #root {
 .navigation-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .toolbar-btn {
@@ -240,21 +293,23 @@ html, body, #root {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   border: 1px solid transparent;
-  color: var(--text-main);
+  color: var(--color-bone-dim);
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: all var(--transition-smooth);
 }
 
 .toolbar-btn:hover:not(:disabled) {
   background-color: var(--bg-btn-hover);
   border-color: var(--border-subtle);
+  color: var(--color-bone);
 }
 
 .toolbar-btn:active:not(:disabled) {
   background-color: var(--bg-btn-active);
+  transform: translateY(1px);
 }
 
 .toolbar-btn:disabled {
@@ -262,7 +317,10 @@ html, body, #root {
   cursor: not-allowed;
 }
 
-/* Address Bar */
+/* ==========================================================================
+   ADDRESS BAR
+   ========================================================================== */
+
 .address-bar-wrapper {
   flex: 1;
   display: flex;
@@ -273,30 +331,40 @@ html, body, #root {
   display: flex;
   align-items: center;
   width: 100%;
-  height: 34px;
+  height: 32px;
   background-color: var(--bg-input);
   border: 1px solid var(--border-subtle);
-  border-radius: 17px;
-  padding: 0 8px;
-  transition: all 0.15s ease;
+  border-radius: var(--radius-pill);
+  padding: 0 10px;
+  transition: border-color var(--transition-smooth), box-shadow var(--transition-smooth), background-color var(--transition-smooth);
+}
+
+.address-bar-container:hover:not(.focused) {
+  border-color: var(--border-medium);
+  background-color: #1a1e1c;
 }
 
 .address-bar-container.focused {
   background-color: var(--bg-input-focus);
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
 .address-bar-prefix {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
+  min-width: 22px;
   color: var(--text-muted);
 }
 
 .security-icon.secure {
-  color: var(--accent-green);
+  display: flex;
+  align-items: center;
+  color: var(--accent-badge);
+  background-color: rgba(63, 143, 104, 0.16);
+  padding: 2px 4px;
+  border-radius: 4px;
 }
 
 .address-bar-input {
@@ -305,10 +373,11 @@ html, body, #root {
   background: transparent;
   border: none;
   outline: none;
-  color: var(--text-main);
+  color: var(--text-primary);
   font-size: 13px;
   padding: 0 8px;
   font-family: inherit;
+  letter-spacing: 0.01em;
 }
 
 .address-bar-input::placeholder {
@@ -326,12 +395,12 @@ html, body, #root {
   border-radius: 50%;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--transition-smooth);
 }
 
 .address-bar-go-btn:hover:not(:disabled) {
-  background-color: var(--bg-btn-hover);
-  color: var(--text-main);
+  background-color: rgba(63, 143, 104, 0.2);
+  color: var(--accent-badge);
 }
 
 .address-bar-go-btn:disabled {
@@ -339,15 +408,18 @@ html, body, #root {
   cursor: default;
 }
 
-/* Progress bar */
+/* ==========================================================================
+   PROGRESS BAR & SPINNERS
+   ========================================================================== */
+
 .toolbar-progress-bar {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
   height: 2px;
-  background: linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd);
-  animation: progressIndeterminate 1.5s infinite ease-in-out;
+  background: linear-gradient(90deg, var(--color-green-primary), var(--color-green-badge), #b5e2c7);
+  animation: progressIndeterminate 1.4s infinite ease-in-out;
 }
 
 @keyframes progressIndeterminate {
@@ -356,9 +428,9 @@ html, body, #root {
   100% { transform: translateX(100%); }
 }
 
-/* Spinner Icon */
 .icon-spin {
-  animation: spin 1s linear infinite;
+  animation: spin 0.9s linear infinite;
+  color: var(--accent-badge);
 }
 
 @keyframes spin {
@@ -366,13 +438,16 @@ html, body, #root {
   to { transform: rotate(360deg); }
 }
 
-/* Error Banner */
+/* ==========================================================================
+   ERROR BANNER
+   ========================================================================== */
+
 .browser-error-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #451a1a;
-  border-bottom: 1px solid var(--accent-red);
+  background-color: #2b1717;
+  border-bottom: 1px solid var(--color-crimson);
   color: #fca5a5;
   padding: 6px 16px;
   font-size: 12px;
@@ -387,8 +462,9 @@ html, body, #root {
   font-size: 14px;
   padding: 2px 6px;
   border-radius: 4px;
+  transition: background-color var(--transition-smooth);
 }
 
 .error-banner-dismiss:hover {
-  background-color: rgba(239, 68, 68, 0.2);
+  background-color: rgba(239, 68, 68, 0.25);
 }
