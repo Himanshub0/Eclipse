@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, session } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { BrowserViewManager } from './browser-view';
 import { IPC_CHANNELS, validateUrlPayload, validateHeightPayload } from './ipc';
@@ -88,22 +88,6 @@ function registerIpcHandlers(): void {
 }
 
 async function initializeApp(): Promise<void> {
-  // Set explicit CSP headers for internal app routes
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    if (details.url.startsWith('file://') || details.url.startsWith('http://localhost:5173')) {
-      callback({
-        responseHeaders: {
-          ...details.responseHeaders,
-          'Content-Security-Policy': [
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:* http://localhost:*;"
-          ]
-        }
-      });
-      return;
-    }
-    callback({ responseHeaders: details.responseHeaders });
-  });
-
   registerIpcHandlers();
 
   mainWindow = createMainWindow();
@@ -111,13 +95,17 @@ async function initializeApp(): Promise<void> {
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
   if (devServerUrl) {
-    await mainWindow.loadURL(devServerUrl);
+    void mainWindow.loadURL(devServerUrl);
   } else {
-    await mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    const indexPath = path.join(__dirname, '../dist/index.html');
+    void mainWindow.loadFile(indexPath);
   }
 
   // Initial navigation to homepage in browser view
   void browserViewManager.navigate(INITIAL_HOMEPAGE);
+
+  mainWindow.show();
+  mainWindow.focus();
 
   if (process.env.SMOKE_TEST === '1') {
     console.log('[SMOKE_TEST] Window and WebContentsView initialized successfully.');
@@ -135,6 +123,8 @@ async function initializeApp(): Promise<void> {
 
 // App lifecycle
 app.whenReady().then(initializeApp).catch((err) => {
+  const fs = require('fs');
+  fs.writeFileSync('startup_error.log', `Fatal error during application startup: ${err?.stack || err}\n`);
   console.error('Fatal error during application startup:', err);
   app.quit();
 });
