@@ -73,6 +73,8 @@ export const IPC_CHANNELS = {
   // Network & Performance
   PRERESOLVE_HOST: 'browser:preresolve-host',
   GET_ADBLOCKER_STATS: 'adblocker:get-stats',
+  DISCARD_TAB: 'browser:discard-tab',
+  GET_SYSTEM_METRICS: 'system:get-metrics',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];
@@ -180,6 +182,9 @@ export function validateSettingsPayload(value: unknown): Partial<EclipseSettings
   }
   if (typeof obj.adBlockerEnabled === 'boolean') {
     out.adBlockerEnabled = obj.adBlockerEnabled;
+  }
+  if (typeof obj.tabDiscardingEnabled === 'boolean') {
+    out.tabDiscardingEnabled = obj.tabDiscardingEnabled;
   }
   if (typeof obj.homepage === 'string') {
     out.homepage = obj.homepage.trim().slice(0, 4096);

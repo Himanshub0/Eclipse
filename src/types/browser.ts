@@ -9,6 +9,7 @@ export interface TabItem {
   canGoForward: boolean;
   error?: string | null;
   favicon?: string | null;
+  isDiscarded?: boolean;
 }
 
 export interface BrowserAppState {
@@ -140,6 +141,8 @@ export interface BrowserApi {
   // Performance & AdBlocker
   preresolveHost?: (host: string) => Promise<boolean>;
   getAdBlockerStats?: () => Promise<{ blockedCount: number; isEnabled: boolean }>;
+  discardTab?: (tabId: string) => Promise<boolean>;
+  getSystemMetrics?: () => Promise<any>;
 }
 
 declare global {

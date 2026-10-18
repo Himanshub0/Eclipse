@@ -34,6 +34,8 @@ test('IPC Validator test suite', async (t) => {
     assert.equal(IPC_CHANNELS.TRIGGER_ACTION, 'browser:trigger-action');
     assert.equal(IPC_CHANNELS.PRERESOLVE_HOST, 'browser:preresolve-host');
     assert.equal(IPC_CHANNELS.GET_ADBLOCKER_STATS, 'adblocker:get-stats');
+    assert.equal(IPC_CHANNELS.DISCARD_TAB, 'browser:discard-tab');
+    assert.equal(IPC_CHANNELS.GET_SYSTEM_METRICS, 'system:get-metrics');
   });
 
   await t.test('validates valid URL strings', () => {
@@ -87,12 +89,14 @@ test('IPC Validator test suite', async (t) => {
       homepage: '  https://news.ycombinator.com  ',
       invalidKey: 'malicious',
       startupMode: 'newtab',
+      tabDiscardingEnabled: true,
     });
     assert.equal(validated.theme, 'light');
     assert.equal(validated.accentColor, 'badge-green');
     assert.equal(validated.searchProvider, 'google');
     assert.equal(validated.homepage, 'https://news.ycombinator.com');
     assert.equal(validated.startupMode, 'newtab');
+    assert.equal(validated.tabDiscardingEnabled, true);
     assert.equal(Object.prototype.hasOwnProperty.call(validated, 'invalidKey'), false);
 
     assert.throws(() => validateSettingsPayload(null), TypeError);

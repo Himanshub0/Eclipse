@@ -17,6 +17,7 @@ export const STORE_DEFAULT_SETTINGS: EclipseSettings = {
   homepage: 'https://duckduckgo.com',
   startupMode: 'homepage',
   adBlockerEnabled: true,
+  tabDiscardingEnabled: true,
 };
 
 export const STORE_SEARCH_TEMPLATES: Record<Exclude<SearchProviderId, 'custom'>, string> = {
@@ -51,6 +52,9 @@ function validateSettings(value: unknown): Partial<EclipseSettings> {
   }
   if (typeof obj.adBlockerEnabled === 'boolean') {
     out.adBlockerEnabled = obj.adBlockerEnabled;
+  }
+  if (typeof obj.tabDiscardingEnabled === 'boolean') {
+    out.tabDiscardingEnabled = obj.tabDiscardingEnabled;
   }
   if (typeof obj.homepage === 'string') {
     out.homepage = obj.homepage.trim().slice(0, 4096);

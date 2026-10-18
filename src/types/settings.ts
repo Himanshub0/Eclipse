@@ -16,6 +16,7 @@ export interface EclipseSettings {
   homepage: string;
   startupMode: StartupMode;
   adBlockerEnabled?: boolean;
+  tabDiscardingEnabled?: boolean;
 }
 
 export const SEARCH_TEMPLATES: Record<Exclude<SearchProviderId, 'custom'>, string> = {
@@ -33,6 +34,7 @@ export const DEFAULT_SETTINGS: EclipseSettings = {
   homepage: 'https://duckduckgo.com',
   startupMode: 'homepage',
   adBlockerEnabled: true,
+  tabDiscardingEnabled: true,
 };
 
 export interface RuntimeVersions {

@@ -229,6 +229,12 @@ const browserApi: BrowserApi = {
   getAdBlockerStats: (): Promise<{ blockedCount: number; isEnabled: boolean }> => {
     return ipcRenderer.invoke(IPC_CHANNELS.GET_ADBLOCKER_STATS);
   },
+  discardTab: (tabId: string): Promise<boolean> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.DISCARD_TAB, tabId);
+  },
+  getSystemMetrics: (): Promise<any> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.GET_SYSTEM_METRICS);
+  },
 };
 
 contextBridge.exposeInMainWorld('browserApi', browserApi);

@@ -260,6 +260,13 @@ function registerIpcHandlers(): void {
     mgr.closeTab(tabId);
   });
 
+  ipcMain.handle(IPC_CHANNELS.DISCARD_TAB, async (event, rawTabId: unknown) => {
+    const mgr = getManagerForEvent(event);
+    if (!mgr) return false;
+    const tabId = validateTabIdPayload(rawTabId);
+    return mgr.discardTab(tabId);
+  });
+
   ipcMain.handle(IPC_CHANNELS.SWITCH_TAB, async (event, rawTabId: unknown) => {
     const mgr = getManagerForEvent(event);
     if (!mgr) return;
@@ -496,6 +503,17 @@ function registerIpcHandlers(): void {
     return {
       blockedCount: adBlockerManager.getBlockedCount(),
       isEnabled: adBlockerManager.getIsEnabled(),
+    };
+  });
+
+  // System Metrics & Performance (Chromium Native Metrics & Tab Discarding)
+  ipcMain.handle(IPC_CHANNELS.GET_SYSTEM_METRICS, async (event) => {
+    const mgr = getManagerForEvent(event);
+    const metrics = app.getAppMetrics();
+    const tabs = mgr ? mgr.getTabMetrics() : { total: 0, active: 0, discarded: 0 };
+    return {
+      metrics,
+      tabs,
     };
   });
 }

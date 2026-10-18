@@ -9,9 +9,13 @@ import type { HistoryStore } from './history-store';
 
 interface TabEntry {
   id: string;
-  view: WebContentsView;
+  view: WebContentsView | null;
   lastError: string | null;
   favicon: string | null;
+  savedUrl?: string;
+  savedTitle?: string;
+  isDiscarded: boolean;
+  lastActiveTime: number;
 }
 
 const DEFAULT_HOMEPAGE = 'https://duckduckgo.com';
@@ -39,6 +43,7 @@ export class BrowserViewManager {
   private nextTabNumber: number = 1;
   private isSettingsOpen: boolean = false;
   private closedTabs: { url: string; title: string }[] = [];
+  private discardCheckTimer: NodeJS.Timeout | null = null;
 
   constructor(
     win: BrowserWindow,
@@ -71,6 +76,14 @@ export class BrowserViewManager {
     this.win.on('resize', () => {
       this.updateBounds();
     });
+
+    // Start background tab discard manager (evaluates every 60s)
+    this.discardCheckTimer = setInterval(() => {
+      this.manageBackgroundTabs();
+    }, 60000);
+    if (this.discardCheckTimer?.unref) {
+      this.discardCheckTimer.unref();
+    }
   }
 
   public updateBounds(): void {
@@ -81,6 +94,11 @@ export class BrowserViewManager {
 
     const active = this.tabs.get(this.activeTabId);
     if (!active) return;
+
+    if (active.isDiscarded || !active.view) {
+      this.restoreTab(active);
+    }
+    if (!active.view) return;
 
     const currentUrl = active.view.webContents.getURL() || '';
     const isBlank = !currentUrl || currentUrl === 'about:blank';
@@ -140,6 +158,8 @@ export class BrowserViewManager {
       view,
       lastError: null,
       favicon: null,
+      isDiscarded: false,
+      lastActiveTime: Date.now(),
     };
 
     this.tabs.set(tabId, entry);
@@ -160,12 +180,18 @@ export class BrowserViewManager {
   }
 
   public switchTab(tabId: string): void {
-    if (!this.tabs.has(tabId)) return;
+    const target = this.tabs.get(tabId);
+    if (!target) return;
 
     this.activeTabId = tabId;
+    target.lastActiveTime = Date.now();
+
+    if (target.isDiscarded || !target.view) {
+      this.restoreTab(target);
+    }
 
     for (const [id, entry] of this.tabs) {
-      if (id !== tabId) {
+      if (id !== tabId && entry.view) {
         entry.view.setVisible(false);
       }
     }
@@ -174,34 +200,137 @@ export class BrowserViewManager {
     this.emitState();
   }
 
+  public discardTab(tabId: string): boolean {
+    const entry = this.tabs.get(tabId);
+    if (!entry) return false;
+    // Chromium Rule: Never discard active tab
+    if (tabId === this.activeTabId) return false;
+    // Already discarded
+    if (entry.isDiscarded || !entry.view) return false;
+
+    const wc = entry.view.webContents;
+    // Chromium Rule: Never discard tabs actively playing audio or actively loading
+    if (wc.isLoading() || wc.isCurrentlyAudible()) {
+      return false;
+    }
+
+    const currentUrl = wc.getURL();
+    if (!currentUrl || currentUrl === 'about:blank') {
+      return false;
+    }
+
+    entry.savedUrl = currentUrl;
+    entry.savedTitle = wc.getTitle() || currentUrl;
+
+    try {
+      this.win.contentView.removeChildView(entry.view);
+    } catch {}
+
+    try {
+      wc.removeAllListeners();
+      if (!wc.isDestroyed()) {
+        wc.close();
+      }
+    } catch {}
+
+    entry.view = null;
+    entry.isDiscarded = true;
+    this.emitState();
+    return true;
+  }
+
+  public restoreTab(entry: TabEntry): void {
+    if (!entry.isDiscarded && entry.view) return;
+
+    const view = new WebContentsView({
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: true,
+        backgroundThrottling: true,
+        session: this.win.webContents.session,
+      },
+    });
+
+    entry.view = view;
+    entry.isDiscarded = false;
+    entry.lastActiveTime = Date.now();
+
+    this.win.contentView.addChildView(view);
+    this.setupSecurityPolicies(entry);
+    this.setupNavigationLifecycle(entry);
+    this.setupContextMenu(entry);
+    this.setupShortcuts(entry);
+
+    const targetUrl = entry.savedUrl || DEFAULT_HOMEPAGE;
+    if (targetUrl && targetUrl !== 'about:blank') {
+      void this.navigateTab(entry, targetUrl);
+    }
+  }
+
+  public manageBackgroundTabs(): void {
+    if (this.settingsStore.getSettings().tabDiscardingEnabled === false) return;
+    if (this.tabs.size <= 4) return;
+
+    const now = Date.now();
+    const candidateEntries: TabEntry[] = [];
+
+    for (const [id, entry] of this.tabs) {
+      if (id === this.activeTabId) continue;
+      if (entry.isDiscarded || !entry.view) continue;
+      if (entry.view.webContents.isLoading()) continue;
+      if (entry.view.webContents.isCurrentlyAudible()) continue;
+      candidateEntries.push(entry);
+    }
+
+    // Sort by lastActiveTime ascending (oldest first)
+    candidateEntries.sort((a, b) => a.lastActiveTime - b.lastActiveTime);
+
+    // Keep active tab + up to 4 recent background tabs alive; discard older excess
+    const maxBackground = 4;
+    const excess = candidateEntries.length - maxBackground;
+
+    for (let i = 0; i < candidateEntries.length; i++) {
+      const entry = candidateEntries[i];
+      const isExcess = i < excess;
+      const isTimeout = now - entry.lastActiveTime > 10 * 60 * 1000;
+      if (isExcess || isTimeout) {
+        this.discardTab(entry.id);
+      }
+    }
+  }
+
   public closeTab(tabId: string): void {
     const entry = this.tabs.get(tabId);
     if (!entry) return;
 
-    const url = entry.view.webContents.getURL();
+    const url = entry.view ? entry.view.webContents.getURL() : (entry.savedUrl || '');
+    const title = entry.view ? entry.view.webContents.getTitle() : (entry.savedTitle || '');
     if (url && url !== 'about:blank') {
       this.closedTabs.push({
         url,
-        title: entry.view.webContents.getTitle() || url,
+        title: title || url,
       });
       if (this.closedTabs.length > 50) {
         this.closedTabs.shift();
       }
     }
 
-    try {
-      this.win.contentView.removeChildView(entry.view);
-    } catch {
-      // ignore
-    }
-
-    try {
-      entry.view.webContents.removeAllListeners();
-      if (!entry.view.webContents.isDestroyed()) {
-        entry.view.webContents.close();
+    if (entry.view) {
+      try {
+        this.win.contentView.removeChildView(entry.view);
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
+
+      try {
+        entry.view.webContents.removeAllListeners();
+        if (!entry.view.webContents.isDestroyed()) {
+          entry.view.webContents.close();
+        }
+      } catch {
+        // ignore
+      }
     }
 
     this.tabs.delete(tabId);
@@ -265,6 +394,7 @@ export class BrowserViewManager {
   }
 
   private setupSecurityPolicies(entry: TabEntry): void {
+    if (!entry.view) return;
     const wc = entry.view.webContents;
 
     wc.setWindowOpenHandler(({ url }) => {
@@ -293,6 +423,7 @@ export class BrowserViewManager {
   }
 
   private setupNavigationLifecycle(entry: TabEntry): void {
+    if (!entry.view) return;
     const wc = entry.view.webContents;
 
     wc.on('did-start-loading', () => {
@@ -317,6 +448,7 @@ export class BrowserViewManager {
     });
 
     wc.on('page-title-updated', () => {
+      entry.savedTitle = wc.getTitle();
       this.emitState();
     });
 
@@ -328,6 +460,8 @@ export class BrowserViewManager {
     });
 
     wc.on('did-navigate', (_e, url) => {
+      entry.savedUrl = url;
+      entry.savedTitle = wc.getTitle();
       this.historyStore.addEntry(url, wc.getTitle());
       this.emitState();
       if (!this.win.isDestroyed()) {
@@ -336,10 +470,31 @@ export class BrowserViewManager {
     });
 
     wc.on('did-navigate-in-page', (_e, url) => {
+      entry.savedUrl = url;
+      entry.savedTitle = wc.getTitle();
       this.historyStore.addEntry(url, wc.getTitle());
       this.emitState();
       if (!this.win.isDestroyed()) {
         this.win.webContents.send(IPC_CHANNELS.HISTORY_CHANGED, this.historyStore.getHistory());
+      }
+    });
+
+    wc.on('render-process-gone', (_e, details) => {
+      console.warn(`[Tab ${entry.id}] Render process gone: ${details.reason} (code: ${details.exitCode})`);
+      entry.lastError = `Tab process terminated: ${details.reason}. Reload to restore.`;
+      this.emitState();
+    });
+
+    wc.on('unresponsive', () => {
+      console.warn(`[Tab ${entry.id}] Page is unresponsive`);
+      entry.lastError = 'Page is unresponsive. You can wait or reload.';
+      this.emitState();
+    });
+
+    wc.on('responsive', () => {
+      if (entry.lastError?.includes('unresponsive')) {
+        entry.lastError = null;
+        this.emitState();
       }
     });
 
@@ -355,6 +510,7 @@ export class BrowserViewManager {
   }
 
   private setupContextMenu(entry: TabEntry): void {
+    if (!entry.view) return;
     const wc = entry.view.webContents;
 
     wc.on('context-menu', (_event, params) => {
@@ -486,6 +642,7 @@ export class BrowserViewManager {
   }
 
   private setupShortcuts(entry: TabEntry): void {
+    if (!entry.view) return;
     const wc = entry.view.webContents;
 
     wc.on('before-input-event', (event, input) => {
@@ -784,19 +941,34 @@ export class BrowserViewManager {
   public getAppState(): BrowserAppState {
     const tabs: TabItem[] = this.tabOrder.map((id) => {
       const entry = this.tabs.get(id)!;
+      if (entry.isDiscarded || !entry.view) {
+        return {
+          id,
+          url: entry.savedUrl || '',
+          title: entry.savedTitle || (entry.savedUrl && entry.savedUrl !== 'about:blank' ? entry.savedUrl : 'New Tab'),
+          isLoading: false,
+          canGoBack: false,
+          canGoForward: false,
+          error: entry.lastError,
+          favicon: entry.favicon,
+          isDiscarded: true,
+        };
+      }
+
       const wc = entry.view.webContents;
       const canBack = wc.navigationHistory ? wc.navigationHistory.canGoBack() : wc.canGoBack();
       const canForward = wc.navigationHistory ? wc.navigationHistory.canGoForward() : wc.canGoForward();
 
       return {
         id,
-        url: wc.getURL() || '',
-        title: wc.getTitle() || (wc.getURL() === 'about:blank' || !wc.getURL() ? 'New Tab' : 'Eclipse'),
+        url: wc.getURL() || entry.savedUrl || '',
+        title: wc.getTitle() || entry.savedTitle || (wc.getURL() === 'about:blank' || !wc.getURL() ? 'New Tab' : 'Eclipse'),
         isLoading: wc.isLoading(),
         canGoBack: Boolean(canBack),
         canGoForward: Boolean(canForward),
         error: entry.lastError,
         favicon: entry.favicon,
+        isDiscarded: false,
       };
     });
 
@@ -812,13 +984,27 @@ export class BrowserViewManager {
     this.win.webContents.send(IPC_CHANNELS.STATE_CHANGED, state);
   }
 
-  public async navigate(rawUrl: string): Promise<boolean> {
+  private ensureActiveView(): TabEntry | null {
     const active = this.tabs.get(this.activeTabId);
+    if (!active) return null;
+    if (active.isDiscarded || !active.view) {
+      this.restoreTab(active);
+    }
+    return active.view ? active : null;
+  }
+
+  public async navigate(rawUrl: string): Promise<boolean> {
+    const active = this.ensureActiveView();
     if (!active) return false;
     return this.navigateTab(active, rawUrl);
   }
 
   private async navigateTab(entry: TabEntry, rawUrl: string): Promise<boolean> {
+    if (entry.isDiscarded || !entry.view) {
+      this.restoreTab(entry);
+    }
+    if (!entry.view) return false;
+
     const template = this.settingsStore.getSearchTemplate();
     const normalized = normalizeUrl(rawUrl, template);
     try {
@@ -833,8 +1019,8 @@ export class BrowserViewManager {
   }
 
   public goBack(): boolean {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return false;
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return false;
     const wc = active.view.webContents;
     const canBack = wc.navigationHistory ? wc.navigationHistory.canGoBack() : wc.canGoBack();
     if (canBack) {
@@ -846,8 +1032,8 @@ export class BrowserViewManager {
   }
 
   public goForward(): boolean {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return false;
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return false;
     const wc = active.view.webContents;
     const canForward = wc.navigationHistory ? wc.navigationHistory.canGoForward() : wc.canGoForward();
     if (canForward) {
@@ -859,29 +1045,29 @@ export class BrowserViewManager {
   }
 
   public reload(): boolean {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return false;
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return false;
     active.view.webContents.reload();
     return true;
   }
 
   public reloadIgnoringCache(): boolean {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return false;
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return false;
     active.view.webContents.reloadIgnoringCache();
     return true;
   }
 
   public stopLoading(): boolean {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return false;
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return false;
     active.view.webContents.stop();
     return true;
   }
 
   public openHomepage(): boolean {
     const homepage = this.settingsStore.getSettings().homepage || DEFAULT_HOMEPAGE;
-    const active = this.tabs.get(this.activeTabId);
+    const active = this.ensureActiveView();
     if (active) {
       return this.navigate(homepage) !== null;
     }
@@ -905,9 +1091,9 @@ export class BrowserViewManager {
   }
 
   public viewSource(): boolean {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return false;
-    const currentUrl = active.view.webContents.getURL();
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return false;
+    const currentUrl = active.view.webContents.getURL() || active.savedUrl;
     if (!currentUrl || currentUrl === 'about:blank') return false;
     const sourceUrl = currentUrl.startsWith('view-source:') ? currentUrl : `view-source:${currentUrl}`;
     this.createTab(sourceUrl);
@@ -915,15 +1101,15 @@ export class BrowserViewManager {
   }
 
   public print(): boolean {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return false;
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return false;
     active.view.webContents.print();
     return true;
   }
 
   public async savePage(): Promise<boolean> {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return false;
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return false;
     const defaultName = (active.view.webContents.getTitle() || 'page')
       .replace(/[\\/:*?"<>|]/g, '_')
       .slice(0, 50) + '.html';
@@ -946,8 +1132,8 @@ export class BrowserViewManager {
   }
 
   public zoomIn(): number {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return 0;
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return 0;
     const current = active.view.webContents.getZoomLevel();
     const next = Math.min(current + 0.5, 4.0);
     active.view.webContents.setZoomLevel(next);
@@ -955,8 +1141,8 @@ export class BrowserViewManager {
   }
 
   public zoomOut(): number {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return 0;
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return 0;
     const current = active.view.webContents.getZoomLevel();
     const next = Math.max(current - 0.5, -3.0);
     active.view.webContents.setZoomLevel(next);
@@ -964,33 +1150,33 @@ export class BrowserViewManager {
   }
 
   public resetZoom(): number {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return 0;
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return 0;
     active.view.webContents.setZoomLevel(0);
     return 0;
   }
 
   public getZoomLevel(): number {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return 0;
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return 0;
     return active.view.webContents.getZoomLevel();
   }
 
   public findInPage(text: string, options?: FindInPageOptions): number {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active || !text) return 0;
+    const active = this.ensureActiveView();
+    if (!active || !active.view || !text) return 0;
     return active.view.webContents.findInPage(text, options);
   }
 
   public stopFindInPage(action: 'clearSelection' | 'keepSelection' | 'activateSelection' = 'clearSelection'): void {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return;
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return;
     active.view.webContents.stopFindInPage(action);
   }
 
   public toggleBookmarkCurrent(): void {
-    const active = this.tabs.get(this.activeTabId);
-    if (!active) return;
+    const active = this.ensureActiveView();
+    if (!active || !active.view) return;
     const url = active.view.webContents.getURL();
     const title = active.view.webContents.getTitle();
     if (url && url !== 'about:blank') {
@@ -1007,20 +1193,38 @@ export class BrowserViewManager {
     }
   }
 
-  public destroy(): void {
+  public getTabMetrics(): { total: number; active: number; discarded: number } {
+    let discarded = 0;
     for (const [, entry] of this.tabs) {
-      try {
-        this.win.contentView.removeChildView(entry.view);
-      } catch {
-        // ignore
-      }
-      try {
-        entry.view.webContents.removeAllListeners();
-        if (!entry.view.webContents.isDestroyed()) {
-          entry.view.webContents.close();
+      if (entry.isDiscarded || !entry.view) discarded++;
+    }
+    return {
+      total: this.tabs.size,
+      active: this.tabs.size - discarded,
+      discarded,
+    };
+  }
+
+  public destroy(): void {
+    if (this.discardCheckTimer) {
+      clearInterval(this.discardCheckTimer);
+      this.discardCheckTimer = null;
+    }
+    for (const [, entry] of this.tabs) {
+      if (entry.view) {
+        try {
+          this.win.contentView.removeChildView(entry.view);
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
+        try {
+          entry.view.webContents.removeAllListeners();
+          if (!entry.view.webContents.isDestroyed()) {
+            entry.view.webContents.close();
+          }
+        } catch {
+          // ignore
+        }
       }
     }
     this.tabs.clear();

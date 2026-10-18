@@ -38,7 +38,7 @@ export class AdBlockerManager {
       });
 
       // Pure network-layer blocking in Electron 34
-      this.blocker.config.loadCosmeticFilters = false;
+      (this.blocker.config as any).loadCosmeticFilters = false;
 
       this.blocker.on('request-blocked', () => {
         this.blockedCount++;

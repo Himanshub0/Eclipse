@@ -26,6 +26,7 @@ test('SettingsStore test suite', async (t) => {
     assert.equal(settings.startupMode, 'homepage');
     assert.equal(settings.homepage, 'https://duckduckgo.com');
     assert.equal(settings.adBlockerEnabled, true);
+    assert.equal(settings.tabDiscardingEnabled, true);
   });
 
   await t.test('updates and persists settings to disk atomically', () => {
@@ -36,6 +37,7 @@ test('SettingsStore test suite', async (t) => {
       searchProvider: 'google',
       homepage: 'https://news.ycombinator.com',
       adBlockerEnabled: false,
+      tabDiscardingEnabled: false,
     });
 
     assert.equal(updated.theme, 'light');
@@ -43,6 +45,7 @@ test('SettingsStore test suite', async (t) => {
     assert.equal(updated.searchProvider, 'google');
     assert.equal(updated.homepage, 'https://news.ycombinator.com');
     assert.equal(updated.adBlockerEnabled, false);
+    assert.equal(updated.tabDiscardingEnabled, false);
 
     // Verify it was written to disk
     assert.equal(fs.existsSync(testFilePath), true);
@@ -52,6 +55,7 @@ test('SettingsStore test suite', async (t) => {
     assert.equal(parsed.accentColor, 'badge-green');
     assert.equal(parsed.searchProvider, 'google');
     assert.equal(parsed.adBlockerEnabled, false);
+    assert.equal(parsed.tabDiscardingEnabled, false);
   });
 
   await t.test('reloads existing settings from disk on instantiation', () => {
