@@ -136,6 +136,10 @@ export interface BrowserApi {
   openDownload: (id: string) => Promise<boolean>;
   showDownloadInFolder: (id: string) => Promise<boolean>;
   cancelDownload: (id: string) => Promise<boolean>;
+
+  // Performance & AdBlocker
+  preresolveHost?: (host: string) => Promise<boolean>;
+  getAdBlockerStats?: () => Promise<{ blockedCount: number; isEnabled: boolean }>;
 }
 
 declare global {

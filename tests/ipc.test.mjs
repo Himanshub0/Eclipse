@@ -32,6 +32,8 @@ test('IPC Validator test suite', async (t) => {
     assert.equal(IPC_CHANNELS.GET_HISTORY, 'history:get');
     assert.equal(IPC_CHANNELS.CLEAR_HISTORY, 'history:clear');
     assert.equal(IPC_CHANNELS.TRIGGER_ACTION, 'browser:trigger-action');
+    assert.equal(IPC_CHANNELS.PRERESOLVE_HOST, 'browser:preresolve-host');
+    assert.equal(IPC_CHANNELS.GET_ADBLOCKER_STATS, 'adblocker:get-stats');
   });
 
   await t.test('validates valid URL strings', () => {

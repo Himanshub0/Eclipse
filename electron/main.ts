@@ -17,15 +17,30 @@ import {
   validateFindInPageOptions,
   validateMoveTabDirection,
 } from './ipc';
+import { AdBlockerManager } from './ad-blocker';
 import type { RuntimeVersions } from '../src/types/settings';
 
 const processStartTime = performance.now();
 
-// Chromium performance & hardware acceleration switches
+// Chromium performance, protocol & hardware acceleration switches
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 app.commandLine.appendSwitch('enable-background-timer-throttling');
 app.commandLine.appendSwitch('enable-dns-prefetching');
+
+// Technique 2: Back-Forward Cache (BFCache) — 0ms Instant Back/Forward
+app.commandLine.appendSwitch(
+  'enable-features',
+  'BackForwardCache,BackForwardCacheMemoryControls,NetworkService,NetworkServiceInProcess'
+);
+app.commandLine.appendSwitch('back-forward-cache', 'true');
+
+// Technique 4: Video & Media Autoplay Blocker
+app.commandLine.appendSwitch('autoplay-policy', 'user-gesture-required');
+
+// Technique 5: HTTP/3 & QUIC Protocol Acceleration
+app.commandLine.appendSwitch('enable-quic');
+app.commandLine.appendSwitch('quic-version', 'h3');
 
 let mainWindow: BrowserWindow | null = null;
 let browserViewManager: BrowserViewManager | null = null;
@@ -35,6 +50,7 @@ const settingsStore = new SettingsStore();
 const bookmarksStore = new BookmarksStore();
 const historyStore = new HistoryStore();
 const downloadsManager = new DownloadsManager();
+const adBlockerManager = new AdBlockerManager(settingsStore.getSettings().adBlockerEnabled ?? true);
 
 function getManagerForEvent(event: Electron.IpcMainInvokeEvent): BrowserViewManager | null {
   const win = BrowserWindow.fromWebContents(event.sender);
@@ -124,6 +140,10 @@ function createAppWindow(initialUrl?: string, isPrivate = false): BrowserWindow 
     mainWindow = win;
     browserViewManager = manager;
     downloadsManager.setWindow(win);
+  }
+
+  if (adBlockerManager.getIsEnabled()) {
+    adBlockerManager.enableInSession(win.webContents.session);
   }
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
@@ -392,7 +412,11 @@ function registerIpcHandlers(): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.UPDATE_SETTINGS, async (_event, rawSettings: unknown) => {
-    const updated = settingsStore.updateSettings(validateSettingsPayload(rawSettings));
+    const validated = validateSettingsPayload(rawSettings);
+    if (typeof validated.adBlockerEnabled === 'boolean') {
+      adBlockerManager.setEnabled(validated.adBlockerEnabled);
+    }
+    const updated = settingsStore.updateSettings(validated);
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send(IPC_CHANNELS.SETTINGS_CHANGED, updated);
     }
@@ -450,6 +474,30 @@ function registerIpcHandlers(): void {
     const id = validateTabIdPayload(rawId);
     return downloadsManager.cancelDownload(id);
   });
+
+  // Network & Predictive Pre-resolve (Technique 3)
+  ipcMain.handle(IPC_CHANNELS.PRERESOLVE_HOST, async (_event, rawHost: unknown) => {
+    if (typeof rawHost !== 'string') return false;
+    let host = rawHost.trim().toLowerCase();
+    host = host.replace(/^[a-z]+:\/\//i, '').split('/')[0].split('?')[0].split(':')[0];
+    if (!host || host.includes(' ') || host === 'localhost' || !host.includes('.')) {
+      return false;
+    }
+    try {
+      await session.defaultSession.resolveHost(host);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  // AdBlocker Stats (Technique 1)
+  ipcMain.handle(IPC_CHANNELS.GET_ADBLOCKER_STATS, async () => {
+    return {
+      blockedCount: adBlockerManager.getBlockedCount(),
+      isEnabled: adBlockerManager.getIsEnabled(),
+    };
+  });
 }
 
 async function initializeApp(): Promise<void> {
@@ -458,6 +506,7 @@ async function initializeApp(): Promise<void> {
   registerIpcHandlers();
 
   downloadsManager.initialize();
+  void adBlockerManager.initialize(session.defaultSession);
   createAppWindow();
 
   if (process.env.BENCHMARK === '1') {

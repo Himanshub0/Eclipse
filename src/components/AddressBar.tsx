@@ -89,8 +89,13 @@ export const AddressBar = forwardRef<AddressBarRef, AddressBarProps>(
           value={inputValue}
           placeholder={`Search with ${providerName} or enter address`}
           spellCheck={false}
-          autoComplete="off"
-          onChange={(e) => setInputValue(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value;
+            setInputValue(val);
+            if (val.length > 3 && typeof window !== 'undefined' && window.browserApi?.preresolveHost) {
+              void window.browserApi.preresolveHost(val);
+            }
+          }}
           onFocus={() => {
             setIsFocused(true);
             setTimeout(() => inputRef.current?.select(), 0);

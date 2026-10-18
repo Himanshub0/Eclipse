@@ -221,6 +221,14 @@ const browserApi: BrowserApi = {
   cancelDownload: (id: string): Promise<boolean> => {
     return ipcRenderer.invoke(IPC_CHANNELS.CANCEL_DOWNLOAD, id);
   },
+
+  // Performance & AdBlocker
+  preresolveHost: (host: string): Promise<boolean> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.PRERESOLVE_HOST, host);
+  },
+  getAdBlockerStats: (): Promise<{ blockedCount: number; isEnabled: boolean }> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.GET_ADBLOCKER_STATS);
+  },
 };
 
 contextBridge.exposeInMainWorld('browserApi', browserApi);

@@ -131,6 +131,7 @@ export class BrowserViewManager {
         contextIsolation: true,
         sandbox: true,
         backgroundThrottling: true,
+        session: this.win.webContents.session,
       },
     });
 

@@ -18,7 +18,7 @@ async function build() {
     target: 'node22',
     outdir: path.join(root, 'dist-electron'),
     outExtension: { '.js': '.cjs' },
-    external: ['electron'],
+    external: ['electron', '@ghostery/adblocker-electron'],
     sourcemap: isDev ? 'inline' : false,
     minify: !isDev,
     logLevel: 'info',

@@ -15,6 +15,7 @@ export interface EclipseSettings {
   customSearchUrl: string;
   homepage: string;
   startupMode: StartupMode;
+  adBlockerEnabled?: boolean;
 }
 
 export const SEARCH_TEMPLATES: Record<Exclude<SearchProviderId, 'custom'>, string> = {
@@ -31,6 +32,7 @@ export const DEFAULT_SETTINGS: EclipseSettings = {
   customSearchUrl: 'https://duckduckgo.com/?q=%s',
   homepage: 'https://duckduckgo.com',
   startupMode: 'homepage',
+  adBlockerEnabled: true,
 };
 
 export interface RuntimeVersions {
